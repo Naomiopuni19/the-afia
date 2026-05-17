@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { processGuestMessage } from '../lib/concierge';
+import { sendBookingConfirmation, sendPaymentReceipt, sendInvoiceEmail } from '../lib/sendEmail';
 
 // ═══ HOTEL CONFIG ═══════════════════════════════════════════════════════════
 // REPLACE this with the real hotel front desk number when you go live.
@@ -1157,10 +1158,33 @@ function hoursUntilCheckIn() {
                     fontFamily:'inherit', opacity:(payingNow || totalOwed<=0) ? 0.6 : 1 }}>
                   {payingNow ? 'Opening payment...' : totalOwed <= 0 ? '✓ All Settled' : `✓ Pay ₵${totalOwed.toFixed(2)} (Card / MoMo)`}
                 </button>
-                <button onClick={() => showToast('Invoice feature coming soon','accent')}
-                  style={{ flex:1, padding:14, ...css.btnGhost, fontSize:13 }}>
-                  Email Invoice
-                </button>
+                <button onClick={async () => {
+  showToast("Sending invoice...", "blue");
+  const result = await sendInvoiceEmail({
+    to: guestEmail || "[email protected]",
+    guestName,
+    roomNumber,
+    suiteType: booking?.room_types?.name || "Suite",
+    checkInDate: booking?.check_in_date,
+    checkOutDate: booking?.check_out_date,
+    nights: booking?.nights,
+    charges: ledger.map(l => ({
+      description: l.description || l.item_name || "Charge",
+      amount: l.amount,
+      category: l.category || "General",
+    })),
+    totalCharged: totalOwed,
+    totalPaid: totalPaid || 0,
+    bookingId: booking?.id,
+  });
+  if (result.ok) {
+    showToast("Invoice sent to your email!", "green");
+  } else {
+    showToast("Failed to send invoice", "red");
+  }
+}}>
+  📄 Email Invoice
+</button>
               </div>
             </>
           )}

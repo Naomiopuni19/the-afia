@@ -298,3 +298,193 @@ export async function sendPaymentReceipt({
     type: "payment_receipt",
   });
 }
+// ─── INVOICE EMAIL ──────────────────────────────────────────────────────────
+// ADD THIS FUNCTION to the bottom of your src/lib/sendEmail.js file
+// (paste it right before the last closing line of the file)
+
+export async function sendInvoiceEmail({
+  to,
+  guestName,
+  roomNumber,
+  suiteType,
+  checkInDate,
+  checkOutDate,
+  nights,
+  charges    = [], // [{ description, amount, category }]
+  totalCharged,
+  totalPaid,
+  bookingId,
+}) {
+  const invoiceNumber = `INV-${String(bookingId).padStart(5, "0")}-${new Date().getFullYear()}`;
+  const issueDate     = new Date().toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" });
+  const balanceDue    = Math.max(0, Number(totalCharged) - Number(totalPaid));
+  const isPaid        = balanceDue <= 0;
+
+  const formatDate = (d) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"long", year:"numeric" });
+  };
+
+  const chargeRows = charges.map(c => `
+    <tr>
+      <td style="padding:10px 0;color:#cbd5e1;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">
+        ${c.description || "Charge"}
+      </td>
+      <td style="padding:10px 0;color:#94a3b8;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">
+        <span style="padding:2px 8px;border-radius:10px;background:rgba(59,130,246,0.08);color:#3b82f6;font-weight:600;">
+          ${c.category || "General"}
+        </span>
+      </td>
+      <td style="padding:10px 0;color:#fff;font-size:13px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+        ₵${Number(c.amount).toFixed(2)}
+      </td>
+    </tr>
+  `).join("");
+
+  const inner = `
+    <!-- Invoice header row -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:28px;">
+      <tr>
+        <td>
+          <div style="font-size:10px;color:#3b82f6;letter-spacing:3px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">
+            Tax Invoice
+          </div>
+          <h1 style="font-family:Georgia,serif;font-size:28px;color:#fff;font-weight:300;margin:0;letter-spacing:-0.5px;">
+            Invoice for ${guestName}
+          </h1>
+        </td>
+        <td style="text-align:right;vertical-align:top;">
+          <div style="display:inline-block;padding:8px 18px;border-radius:30px;
+            background:${isPaid ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)"};
+            border:1px solid ${isPaid ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"};
+            color:${isPaid ? "#10b981" : "#f59e0b"};
+            font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">
+            ${isPaid ? "✓ PAID IN FULL" : "⏳ BALANCE DUE"}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Invoice meta -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+      style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:16px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:22px 24px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="width:50%;vertical-align:top;">
+                <div style="font-size:10px;color:#64748b;letter-spacing:1.5px;margin-bottom:4px;">INVOICE NUMBER</div>
+                <div style="font-size:14px;color:#fff;font-weight:700;font-family:'Courier New',monospace;">${invoiceNumber}</div>
+              </td>
+              <td style="width:50%;text-align:right;vertical-align:top;">
+                <div style="font-size:10px;color:#64748b;letter-spacing:1.5px;margin-bottom:4px;">ISSUE DATE</div>
+                <div style="font-size:13px;color:#fff;font-weight:600;">${issueDate}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Stay details -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+      style="background:rgba(255,255,255,0.02);border:1px solid rgba(51,65,85,0.4);border-radius:16px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:22px 24px;">
+          <div style="font-size:10px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:16px;">
+            Stay Details
+          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding:6px 0;color:#64748b;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:40%;">Suite</td>
+              <td style="padding:6px 0;color:#fff;font-size:13px;font-weight:600;text-align:right;">${suiteType || "Suite"} · #${roomNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#64748b;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Check-In</td>
+              <td style="padding:6px 0;color:#fff;font-size:13px;font-weight:500;text-align:right;">${formatDate(checkInDate)}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#64748b;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Check-Out</td>
+              <td style="padding:6px 0;color:#fff;font-size:13px;font-weight:500;text-align:right;">${formatDate(checkOutDate)}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#64748b;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Nights</td>
+              <td style="padding:6px 0;color:#fff;font-size:13px;font-weight:500;text-align:right;">${nights || "—"}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Itemized charges -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+      style="background:rgba(255,255,255,0.02);border:1px solid rgba(51,65,85,0.4);border-radius:16px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:22px 24px;">
+          <div style="font-size:10px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:16px;">
+            Itemized Charges
+          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <th style="padding:0 0 10px;color:#475569;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:left;">Description</th>
+              <th style="padding:0 0 10px;color:#475569;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;">Category</th>
+              <th style="padding:0 0 10px;color:#475569;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:right;">Amount</th>
+            </tr>
+            ${chargeRows || `<tr><td colspan="3" style="padding:20px 0;color:#475569;text-align:center;font-size:13px;">No charges recorded</td></tr>`}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Totals -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"
+      style="background:linear-gradient(135deg,rgba(59,130,246,0.10),rgba(59,130,246,0.04));border:1.5px solid rgba(59,130,246,0.25);border-radius:16px;margin-bottom:28px;">
+      <tr>
+        <td style="padding:24px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Total Charges</td>
+              <td style="padding:6px 0;color:#fff;font-size:13px;font-weight:600;text-align:right;">₵${Number(totalCharged).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Amount Paid</td>
+              <td style="padding:6px 0;color:#10b981;font-size:13px;font-weight:600;text-align:right;">− ₵${Number(totalPaid).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0 0;border-top:1px solid rgba(59,130,246,0.2);">
+                <div style="font-size:11px;color:#64748b;margin-bottom:4px;">${isPaid ? "SETTLED IN FULL" : "BALANCE DUE"}</div>
+              </td>
+              <td style="padding:16px 0 0;text-align:right;border-top:1px solid rgba(59,130,246,0.2);">
+                <div style="font-family:Georgia,serif;font-size:32px;color:${isPaid ? "#10b981" : "#f59e0b"};font-weight:300;letter-spacing:-1px;">
+                  ₵${balanceDue.toFixed(2)}
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${isPaid ? `
+    <div style="text-align:center;padding:16px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:12px;color:#10b981;font-size:12px;font-weight:600;margin-bottom:20px;">
+      ✓ This invoice has been settled in full. Thank you, ${guestName}!
+    </div>
+    ` : `
+    <div style="text-align:center;padding:16px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;color:#f59e0b;font-size:12px;margin-bottom:20px;">
+      Outstanding balance of <strong>₵${balanceDue.toFixed(2)}</strong> — settle via your suite portal.
+    </div>
+    `}
+
+    <p style="color:#64748b;font-size:11px;line-height:1.7;margin:0;text-align:center;">
+      This invoice was automatically generated by The Afia hotel management system.<br/>
+      Invoice #${invoiceNumber} · For queries contact us at ${"+233 54 366 2896"}
+    </p>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `${isPaid ? "Invoice (Paid)" : "Invoice"} · ${invoiceNumber} · The Afia`,
+    html: wrap(inner),
+    type: "invoice",
+  });
+}
