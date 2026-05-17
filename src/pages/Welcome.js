@@ -1103,7 +1103,7 @@ function hoursUntilCheckIn() {
             </>
           )}
 
-          {activeTab === 'billing' && (
+         {activeTab === 'billing' && (
             <>
               <div style={{ marginBottom:20 }}>
                 <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>My Folio</div>
@@ -1158,33 +1158,33 @@ function hoursUntilCheckIn() {
                     fontFamily:'inherit', opacity:(payingNow || totalOwed<=0) ? 0.6 : 1 }}>
                   {payingNow ? 'Opening payment...' : totalOwed <= 0 ? '✓ All Settled' : `✓ Pay ₵${totalOwed.toFixed(2)} (Card / MoMo)`}
                 </button>
-                <button onClick={async () => {
-  showToast("Sending invoice...", "blue");
-  const result = await sendInvoiceEmail({
-    to: guestEmail || "[email protected]",
-    guestName,
-    roomNumber,
-    suiteType: booking?.room_types?.name || "Suite",
-    checkInDate: booking?.check_in_date,
-    checkOutDate: booking?.check_out_date,
-    nights: booking?.nights,
-    charges: ledger.map(l => ({
-      description: l.description || l.item_name || "Charge",
-      amount: l.amount,
-      category: l.category || "General",
-    })),
-    totalCharged: totalOwed,
-    totalPaid: totalPaid || 0,
-    bookingId: booking?.id,
-  });
-  if (result.ok) {
-    showToast("Invoice sent to your email!", "green");
-  } else {
-    showToast("Failed to send invoice", "red");
-  }
-}}>
-  📄 Email Invoice
-</button>
+                <button style={css.btnPrimary} onClick={async () => {
+                  showToast("Sending invoice...", "accent");
+                  const result = await sendInvoiceEmail({
+                    to: user?.email || "[email protected]",
+                    guestName,
+                    roomNumber,
+                    suiteType: booking?.room_types?.name || "Suite",
+                    checkInDate: booking?.check_in_date,
+                    checkOutDate: booking?.check_out_date,
+                    nights: booking?.nights,
+                    charges: ledger.map(l => ({
+                      description: l.description || l.item_name || "Charge",
+                      amount: l.amount,
+                      category: l.category || "General",
+                    })),
+                    totalCharged: ledger.reduce((s, l) => s + Number(l.amount || 0), 0),
+                    totalPaid: ledger.filter(l => l.status === "paid").reduce((s, l) => s + Number(l.amount || 0), 0),
+                    bookingId: booking?.id,
+                  });
+                  if (result.ok) {
+                    showToast("Invoice sent to your email!", "accent");
+                  } else {
+                    showToast("Failed to send — try on the live site", "red");
+                  }
+                }}>
+                  📄 Email Invoice
+                </button>
               </div>
             </>
           )}

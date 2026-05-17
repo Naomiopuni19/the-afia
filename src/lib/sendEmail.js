@@ -487,4 +487,4 @@ export async function sendInvoiceEmail({
     html: wrap(inner),
     type: "invoice",
   });
-}
+} 
