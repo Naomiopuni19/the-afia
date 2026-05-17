@@ -1183,7 +1183,7 @@ function hoursUntilCheckIn() {
                     showToast("Failed to send — try on the live site", "red");
                   }
                 }}>
-                  📄 Email Invoice
+                  📄 Send Invoice
                 </button>
               </div>
             </>
