@@ -518,16 +518,19 @@ GUEST COMMUNICATIONS
   };
 
   // ── CHECKOUT ────────────────────────────────────────────────────────────────
-  const handleCheckOut = async (id, roomNumber) => {
-    const { error } = await supabase.from("bookings").update({ status:"COMPLETED" }).eq("id", id);
-    if (error) { addToast("Check-out failed.", "error"); return; }
-    setBookings(p => p.filter(b => b.id !== id));
-    await updateRoomStatus(roomNumber, "CLEANING");
-    addLog(`Check-out: Suite ${roomNumber}`);
-    addToast(`Suite ${roomNumber} checked out`, "success");
-    setSelectedGuest(null);
-    setConfirmDialog(null);
-  };
+ const handleCheckOut = async (id, roomNumber) => {
+  const { error } = await supabase.from("bookings").update({
+    status: "COMPLETED",
+    check_out_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) { addToast("Check-out failed.", "error"); return; }
+  setBookings(p => p.filter(b => b.id !== id));
+  await updateRoomStatus(roomNumber, "CLEANING");
+  addLog(`Check-out: Suite ${roomNumber}`);
+  addToast(`Suite ${roomNumber} checked out`, "success");
+  setSelectedGuest(null);
+  setConfirmDialog(null);
+};
 
   const updateRoomStatus = async (roomNumber, newStatus) => {
     const { error } = await supabase.from("rooms").update({ status:newStatus }).eq("room_number", roomNumber);

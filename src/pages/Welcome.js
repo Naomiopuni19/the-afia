@@ -154,6 +154,7 @@ export default function Welcome() {
 
   // UI state
   const [activeTab,    setActiveTab]    = useState('overview');
+  const [stayEnded, setStayEnded] = useState(false);
   const [temp,         setTemp]         = useState(22);
   const [isDND,        setIsDND]        = useState(false);
   const [keyCode,      setKeyCode]      = useState('----');
@@ -266,11 +267,46 @@ export default function Welcome() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomNumber]);
+  // ── Auto logout when stay ends ──
+useEffect(() => {
+  if (!booking?.check_out_date) return;
+
+  const checkStayEnded = () => {
+    const now = new Date();
+    const checkoutDate = new Date(booking.check_out_date);
+    // Set checkout time to 12:00 PM on checkout date (Ghana time UTC+0)
+    checkoutDate.setUTCHours(12, 0, 0, 0);
+
+    if (now >= checkoutDate && booking.status === 'ACTIVE') {
+      setStayEnded(true);
+      // Auto logout after 10 seconds
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+      }, 10000);
+    }
+  };
+
+  // Check immediately and then every 5 minutes
+  checkStayEnded();
+  const interval = setInterval(checkStayEnded, 5 * 60 * 1000);
+  return () => clearInterval(interval);
+}, [booking, navigate]);
 
   // Realtime
   useEffect(() => {
     if (!roomNumber || roomNumber === "—") return;
     const ch = supabase.channel(`guest-room-${roomNumber}`)
+     .on('postgres_changes', { event:'*', schema:'public', table:'bookings',
+    filter:`room_number=eq.${roomNumber}` }, async (payload) => {
+    if (payload.new?.status === 'COMPLETED') {
+      setStayEnded(true);
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+      }, 10000);
+    }
+  })
       .on('postgres_changes', { event:'*', schema:'public', table:'orders', filter:`room_number=eq.${roomNumber}` }, () => fetchMyOrders(roomNumber))
       .on('postgres_changes', { event:'*', schema:'public', table:'guest_ledger', filter:`room_number=eq.${roomNumber}` }, () => fetchLedger(roomNumber))
       .on('postgres_changes', { event:'*', schema:'public', table:'menu_items' }, () => fetchMenu())
@@ -702,6 +738,61 @@ function hoursUntilCheckIn() {
   // Main render
   return (
     <div style={css.wrap}>
+      {/* ── Stay ended overlay ── */}
+{stayEnded && (
+  <div style={{
+    position:'fixed', inset:0, zIndex:9999,
+    background:'radial-gradient(circle at center, #0f172a, #020617)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    fontFamily:"'Inter', sans-serif", color:'#fff',
+  }}>
+    <div style={{
+      textAlign:'center', maxWidth:480, padding:40,
+      background:'rgba(15,23,42,0.9)', backdropFilter:'blur(24px)',
+      border:'1px solid rgba(59,130,246,0.18)', borderRadius:28,
+      boxShadow:'0 30px 60px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{ fontSize:64, marginBottom:20 }}>✦</div>
+      <div style={{ fontSize:10, color:accentColor, letterSpacing:4, fontWeight:700,
+        textTransform:'uppercase', marginBottom:14 }}>The Afia</div>
+      <h2 style={{ fontFamily:"Georgia, serif", fontSize:32, fontWeight:300,
+        margin:'0 0 14px', letterSpacing:-0.5 }}>
+        Thank you for staying with us
+      </h2>
+      <p style={{ color:'#94a3b8', fontSize:14, lineHeight:1.8, marginBottom:28 }}>
+        Your stay has ended, {guestName}. It was an honour hosting you at The Afia.
+        We hope to welcome you back soon.
+      </p>
+      <div style={{ padding:'14px 20px', borderRadius:12, marginBottom:28,
+        background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.2)',
+        fontSize:12, color:'#94a3b8' }}>
+        You will be signed out automatically in a few seconds...
+      </div>
+      <div style={{ display:'flex', gap:12 }}>
+        <button onClick={() => navigate('/book')}
+          style={{ flex:1, padding:16, borderRadius:14,
+            background:'linear-gradient(135deg, #3b82f6, #2563eb)',
+            border:'none', color:'#fff', fontSize:13, fontWeight:700,
+            letterSpacing:1.5, textTransform:'uppercase',
+            cursor:'pointer', fontFamily:'inherit' }}>
+          Book Your Next Stay
+        </button>
+        <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
+          style={{ flex:1, padding:16, borderRadius:14,
+            background:'rgba(255,255,255,0.04)',
+            border:'1px solid rgba(255,255,255,0.1)',
+            color:'#94a3b8', fontSize:13, fontWeight:700,
+            cursor:'pointer', fontFamily:'inherit' }}>
+          Sign Out Now
+        </button>
+      </div>
+      <div style={{ marginTop:24, fontSize:9, color:'#475569',
+        letterSpacing:3, textTransform:'uppercase' }}>
+        The Afia · Designed for those who notice
+      </div>
+    </div>
+  </div>
+)}
       <aside style={css.sidebar}>
         <div style={css.logo}>
           <div style={css.logoIcon}>✦</div>
