@@ -22,6 +22,7 @@ const Icons = {
   chat:      "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
   billing:   "M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z M1 12h22",
   settings:  "M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",
+  xplore:   "M3 12a9 9 0 1018 0 9 9 0 00-18 0M12 8v4M12 12l3 3",
   logout:    "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
   key:       "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
   bell:      "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 01-3.46 0",
@@ -585,10 +586,11 @@ function hoursUntilCheckIn() {
 
   const navItems = [
     { key:'overview',  label:'Overview',       icon:Icons.dashboard },
-    { key:'dining',    label:'Gourmet Dining', icon:Icons.dining },
-    { key:'concierge', label:'AI Concierge',   icon:Icons.chat },
-    { key:'billing',   label:'My Folio',       icon:Icons.billing },
-    { key:'settings',  label:'Room Settings',  icon:Icons.settings },
+    { key:'explore',   label:'Explore',        icon:Icons.explore   },
+    { key:'dining',    label:'Gourmet Dining', icon:Icons.dining    },
+    { key:'concierge', label:'AI Concierge',   icon:Icons.chat      },
+    { key:'billing',   label:'My Folio',       icon:Icons.billing   },
+    { key:'settings',  label:'Room Settings',  icon:Icons.settings  },
   ];
 
   const menuByCat = menuItems.reduce((acc, m) => {
@@ -748,20 +750,24 @@ function hoursUntilCheckIn() {
             </div>
           </header>
 
+         
           {activeTab === 'overview' && (
             <>
-              <div style={{ ...css.glassCard, display:'flex', justifyContent:'space-between', alignItems:'center', gap:24, marginBottom:22, position:'relative', overflow:'hidden' }}>
+              {/* ── Digital Room Key ── */}
+              <div style={{ ...css.glassCard, display:'flex', justifyContent:'space-between', alignItems:'center', gap:24, marginBottom:20, position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', top:-60, right:160, width:200, height:200,
                   background:`radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)`, pointerEvents:'none' }} />
                 <div style={{ maxWidth:400 }}>
                   <div style={{ fontSize:10, letterSpacing:'2.5px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:10 }}>
                     ▸ Suite {roomNumber} — Encrypted Access
                   </div>
-                  <h2 style={{ ...css.serif, fontSize:38, fontWeight:300, color:'#f8fafc', lineHeight:1, marginBottom:8 }}>Digital Room Key</h2>
-                  <p style={{ fontSize:13, color:C.muted, lineHeight:1.6 }}>
+                  <h2 style={{ ...css.serif, fontSize:34, fontWeight:300, color:'#f8fafc', lineHeight:1, marginBottom:8 }}>
+                    Digital Room Key
+                  </h2>
+                  <p style={{ fontSize:13, color:C.muted, lineHeight:1.6, marginBottom:20 }}>
                     Hold your device near the door sensor. Your key is end-to-end encrypted and refreshes every session.
                   </p>
-                  <div style={{ display:'flex', gap:10, marginTop:20 }}>
+                  <div style={{ display:'flex', gap:10 }}>
                     <button style={css.btnPrimary} onClick={generateToken}>Generate Token</button>
                     <button style={css.btnGhost} onClick={() => setShowKeyModal(true)}>View Details</button>
                   </div>
@@ -777,155 +783,171 @@ function hoursUntilCheckIn() {
                   </div>
                 </div>
               </div>
-
-              <div style={css.grid3}>
-                <div style={css.card}>
-                  <div style={css.cardHeader}>
-                    <span style={css.cardTitle}>Suite Climate</span>
-                    <Icon d={Icons.thermo} size={16} color={C.muted} />
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, margin:'8px 0 16px' }}>
-                    <button style={css.tempBtn} onClick={() => setTemp(t => Math.max(16,t-1))}>−</button>
-                    <span style={{ ...css.serif, fontSize:48, fontWeight:300, color:'#f8fafc', lineHeight:1 }}>{temp}°</span>
-                    <button style={css.tempBtn} onClick={() => { setTemp(t => Math.min(30,t+1)); showToast(`Set to ${temp+1}°C`,'accent'); }}>+</button>
-                  </div>
-                  <button onClick={() => { setIsDND(d => !d); showToast(isDND ? 'DND deactivated' : 'DND activated','accent'); }}
-                    style={{ ...css.btnFull, background: isDND ? 'rgba(239,68,68,0.15)' : C.card2,
-                      borderColor: isDND ? 'rgba(239,68,68,0.4)' : C.border, color: isDND ? C.red : C.text }}>
-                    <Icon d={isDND ? Icons.moon : Icons.sun} size={16} color={isDND ? C.red : C.muted} />
-                    {isDND ? 'Do Not Disturb Active' : 'Request Privacy'}
-                  </button>
-                </div>
-
-                <div style={css.card}>
-                  <div style={css.cardHeader}>
-                    <span style={css.cardTitle}>Active Orders</span>
-                    <Icon d={Icons.clock} size={16} color={C.muted} />
-                  </div>
-                  <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:12, padding:14 }}>
-                    <div style={{ fontSize:13, fontWeight:500, marginBottom:4 }}>{activeOrderName}</div>
-                    <div style={{ fontSize:11, color:accentColor, marginBottom:10 }}>{orderStatusLabel}</div>
-                    <div style={{ height:3, background:'rgba(255,255,255,0.08)', borderRadius:2, overflow:'hidden' }}>
-                      <div style={{ width:`${orderProgressPct}%`, height:'100%', background:`linear-gradient(90deg,${C.accent},${C.accent2})`, borderRadius:2, transition:'width 0.5s' }} />
-                    </div>
-                  </div>
-                  <button style={css.btnFull} onClick={() => setActiveTab('dining')}>
-                    <Icon d={Icons.coffee} size={16} color={C.muted} /> Order More
-                  </button>
-                </div>
-
-                <div style={css.card}>
-                  <div style={css.cardHeader}>
-                    <span style={css.cardTitle}>Live Folio</span>
-                    <Icon d={Icons.card} size={16} color={C.muted} />
-                  </div>
-                  <div style={{ fontSize:11, color:C.muted }}>Current Outstanding</div>
-                  <div style={{ ...css.serif, fontSize:42, fontWeight:300, color:'#f8fafc', lineHeight:1, margin:'6px 0 4px' }}>
-                    ₵{totalOwed.toFixed(2)}
-                  </div>
-                  <div style={{ display:'flex', gap:12, fontSize:11, color:C.muted, marginBottom:12 }}>
-                    <span>{ledger.length} open {ledger.length === 1 ? 'charge' : 'charges'}</span>
-                  </div>
-                  <button onClick={() => setActiveTab('billing')}
-                    style={{ ...css.btnFull, background:'rgba(16,185,129,0.10)', borderColor:'rgba(16,185,129,0.3)', color:C.green }}>
-                    View Full Folio
-                  </button>
-                </div>
-              </div>
- <div style={{ ...css.card, marginBottom: 16 }}>
+ 
+              {/* ── Reservation Card ── */}
+              <div style={{ ...css.card, marginBottom:16 }}>
                 <div style={css.cardHeader}>
                   <span style={css.cardTitle}>My Reservation</span>
                   <Icon d={Icons.clock} size={16} color={C.muted} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+ 
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:16, marginBottom:18 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: C.subtle || C.muted, letterSpacing: 1.5, marginBottom: 4 }}>CHECK-IN</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>
-                      {booking.check_in_date ? new Date(booking.check_in_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                    <div style={{ fontSize:10, color:C.muted, letterSpacing:1.5, marginBottom:4 }}>CHECK-IN</div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>
+                      {booking?.check_in_date ? new Date(booking.check_in_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: C.subtle || C.muted, letterSpacing: 1.5, marginBottom: 4 }}>CHECK-OUT</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>
-                      {booking.check_out_date ? new Date(booking.check_out_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                    <div style={{ fontSize:10, color:C.muted, letterSpacing:1.5, marginBottom:4 }}>CHECK-OUT</div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>
+                      {booking?.check_out_date ? new Date(booking.check_out_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: C.subtle || C.muted, letterSpacing: 1.5, marginBottom: 4 }}>NIGHTS · GUESTS</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>
-                      {booking.nights || "—"} · {booking.guest_count || 1}
+                    <div style={{ fontSize:10, color:C.muted, letterSpacing:1.5, marginBottom:4 }}>NIGHTS · GUESTS</div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>
+                      {booking?.nights || '—'} · {booking?.guest_count || 1}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: C.subtle || C.muted, letterSpacing: 1.5, marginBottom: 4 }}>TOTAL</div>
-                    <div style={{ ...css.serif, fontSize: 18, color: accentColor, lineHeight: 1 }}>
-                      ₵{booking.total_amount ? Number(booking.total_amount).toLocaleString() : "—"}
+                    <div style={{ fontSize:10, color:C.muted, letterSpacing:1.5, marginBottom:4 }}>TOTAL</div>
+                    <div style={{ ...css.serif, fontSize:20, color:accentColor, lineHeight:1 }}>
+                      ₵{booking?.total_amount ? Number(booking.total_amount).toLocaleString() : '—'}
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 10 }}>
+ 
+                <div style={{ display:'flex', gap:10 }}>
                   <button onClick={openModifyModal}
-                    style={{ flex: 1, padding: 10, borderRadius: 10, background: "rgba(59,130,246,0.08)",
-                      border: `1px solid ${C.border}`, color: accentColor, fontSize: 11, fontWeight: 700,
-                      letterSpacing: 1.2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ flex:1, padding:10, borderRadius:10, background:'rgba(59,130,246,0.08)',
+                      border:`1px solid ${C.border}`, color:accentColor, fontSize:11, fontWeight:700,
+                      letterSpacing:1.2, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit' }}>
                     Modify Reservation
                   </button>
                   <button onClick={() => setShowCancelModal(true)}
-                    style={{ flex: 1, padding: 10, borderRadius: 10, background: "rgba(239,68,68,0.08)",
-                      border: "1px solid rgba(239,68,68,0.25)", color: C.red, fontSize: 11, fontWeight: 700,
-                      letterSpacing: 1.2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ flex:1, padding:10, borderRadius:10, background:'rgba(239,68,68,0.08)',
+                      border:'1px solid rgba(239,68,68,0.25)', color:C.red, fontSize:11, fontWeight:700,
+                      letterSpacing:1.2, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit' }}>
                     Cancel Booking
                   </button>
                 </div>
+ 
                 {!canCancelFree && (
-                  <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(245,158,11,0.08)",
-                    border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10,
-                    fontSize: 11, color: C.gold || "#f59e0b" }}>
+                  <div style={{ marginTop:12, padding:'8px 12px', background:'rgba(245,158,11,0.08)',
+                    border:'1px solid rgba(245,158,11,0.25)', borderRadius:10,
+                    fontSize:11, color:C.gold || '#f59e0b' }}>
                     ⚠ Less than 24 hours to check-in — cancellation will not be refunded.
                   </div>
                 )}
               </div>
  
-              <div style={css.grid2}>
-                <div style={css.card}>
-                  <div style={css.cardHeader}>
-                    <span style={css.cardTitle}>Hotel Highlights</span>
-                    <Icon d={Icons.pin} size={16} color={C.muted} />
-                  </div>
-                  <div style={{ display:'flex', gap:10 }}>
-                    {[
-                      { icon:'🏊', name:'Sky Pool', info:'Floor 14 · Until 11 PM', action:'Reserve Slot', toast:'Sky Pool reserved' },
-                      { icon:'💆', name:'Zen Spa', info:'Floor 2 · Book session', action:'Book Now', toast:'Spa booking request sent' },
-                      { icon:'🍸', name:'Sky Bar', info:'Floor 15 · Until 2 AM', action:'Reserve', toast:'Table reserved at Sky Bar' },
-                    ].map(p => (
-                      <div key={p.name} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:12, padding:14, flex:1 }}>
-                        <div style={{ fontSize:20 }}>{p.icon}</div>
-                        <div style={{ fontSize:13, fontWeight:600, margin:'8px 0 2px' }}>{p.name}</div>
-                        <div style={{ fontSize:11, color:C.muted, marginBottom:8 }}>{p.info}</div>
-                        <button style={{ ...css.btnFull, marginTop:0 }} onClick={() => showToast(p.toast,'accent')}>{p.action}</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={css.card}>
-                  <div style={css.cardHeader}>
-                    <span style={css.cardTitle}>Quick Request</span>
-                    <span style={{ color:accentColor }}>✦</span>
-                  </div>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
-                    {['Housekeeping','Room Service','Luggage','Towels'].map(cat => (
-                      <button key={cat} style={css.chip(selCat === cat)} onClick={() => setSelCat(c => c === cat ? '' : cat)}>{cat}</button>
-                    ))}
-                  </div>
-                  <textarea value={reqNote} onChange={e => setReqNote(e.target.value)} rows={3}
-                    placeholder="Describe your request..."
-                    style={{ width:'100%', background:C.card2, border:`1px solid ${C.border}`, borderRadius:10,
-                      padding:'10px 14px', color:C.text, fontFamily:'inherit', fontSize:13, resize:'none', outline:'none', boxSizing:'border-box' }} />
-                  <button style={{ ...css.btnFull, background:C.accent, color:'#ffffff', border:'none', fontWeight:700, letterSpacing:'1.5px' }}
-                    onClick={sendRequest}>
-                    <Icon d={Icons.send} size={14} color='#ffffff' /> Send Request
+              {/* ── Quick links row ── */}
+              <div style={{ display:'flex', gap:12 }}>
+                {[
+                  { label:'Order Food', icon:'🍽', tab:'dining', color:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.25)', text:'#f59e0b' },
+                  { label:'AI Concierge', icon:'✦', tab:'concierge', color:'rgba(59,130,246,0.1)', border:'rgba(59,130,246,0.25)', text:accentColor },
+                  { label:'My Folio', icon:'₵', tab:'billing', color:'rgba(16,185,129,0.1)', border:'rgba(16,185,129,0.25)', text:'#10b981' },
+                  { label:'Explore Hotel', icon:'🏊', tab:'explore', color:'rgba(139,92,246,0.1)', border:'rgba(139,92,246,0.25)', text:'#8b5cf6' },
+                ].map(q => (
+                  <button key={q.tab} onClick={() => setActiveTab(q.tab)}
+                    style={{ flex:1, padding:'14px 8px', borderRadius:14, background:q.color,
+                      border:`1px solid ${q.border}`, color:q.text, fontSize:11, fontWeight:700,
+                      cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column',
+                      alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:20 }}>{q.icon}</span>
+                    <span style={{ letterSpacing:0.5 }}>{q.label}</span>
                   </button>
+                ))}
+              </div>
+            </>
+          )}
+          {/* ══ EXPLORE TAB ══ */}
+          {activeTab === 'explore' && (
+            <>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>Discover</div>
+                <h2 style={{ ...css.serif, fontSize:26, fontWeight:300, color:'#f8fafc' }}>Explore The Afia</h2>
+              </div>
+ 
+              {/* Facilities grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
+                {[
+                  { icon:'🏊', name:'Sky Pool', floor:14, hours:'6 AM – 11 PM', temp:'28°C', color:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.25)', action:'Reserve Cabana' },
+                  { icon:'💆', name:'Zen Spa', floor:2, hours:'8 AM – 10 PM', temp:'Treatments from ₵180', color:'rgba(139,92,246,0.12)', border:'rgba(139,92,246,0.25)', action:'Book Session' },
+                  { icon:'🏋', name:'Fitness Center', floor:4, hours:'Open 24 hours', temp:'Personal trainers available', color:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.25)', action:'Book Trainer' },
+                  { icon:'🍸', name:'Sky Bar', floor:15, hours:'5 PM – 2 AM', temp:'Panoramic city views', color:'rgba(16,185,129,0.12)', border:'rgba(16,185,129,0.25)', action:'Reserve Table' },
+                ].map(f => (
+                  <div key={f.name} style={{ ...css.card, background:f.color, border:`1px solid ${f.border}` }}>
+                    <div style={{ fontSize:32, marginBottom:10 }}>{f.icon}</div>
+                    <div style={{ fontSize:16, fontWeight:700, color:'#fff', marginBottom:4 }}>{f.name}</div>
+                    <div style={{ fontSize:11, color:C.muted, marginBottom:2 }}>Floor {f.floor} · {f.hours}</div>
+                    <div style={{ fontSize:11, color:C.muted, marginBottom:14 }}>{f.temp}</div>
+                    <button style={{ ...css.btnFull, marginTop:0 }}
+                      onClick={() => showToast(`${f.action} request sent!`, 'accent')}>
+                      {f.action}
+                    </button>
+                  </div>
+                ))}
+              </div>
+ 
+              {/* Day trips */}
+              <div style={css.card}>
+                <div style={css.cardHeader}>
+                  <span style={css.cardTitle}>Day Experiences</span>
+                  <span style={{ color:accentColor }}>✦</span>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {[
+                    { name:'Cape Coast Castle', duration:'Full day', price:'₵450', icon:'🏰' },
+                    { name:'Kakum Canopy Walk', duration:'Half day', price:'₵380', icon:'🌿' },
+                    { name:'Aburi Gardens', duration:'Half day', price:'₵220', icon:'🌺' },
+                    { name:'Accra City Tour', duration:'4 hours', price:'₵300', icon:'🏙' },
+                  ].map(t => (
+                    <div key={t.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                      padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.03)',
+                      border:'1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <span style={{ fontSize:22 }}>{t.icon}</span>
+                        <div>
+                          <div style={{ fontSize:13, fontWeight:600, color:'#fff' }}>{t.name}</div>
+                          <div style={{ fontSize:11, color:C.muted }}>{t.duration} · Transport included</div>
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ ...css.serif, fontSize:16, color:accentColor }}>{t.price}</span>
+                        <button style={{ ...css.btnFull, marginTop:0, padding:'6px 14px', width:'auto' }}
+                          onClick={() => showToast(`${t.name} booking request sent!`, 'accent')}>
+                          Book
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+ 
+              {/* Transport */}
+              <div style={{ ...css.card, marginTop:14 }}>
+                <div style={css.cardHeader}>
+                  <span style={css.cardTitle}>Transport</span>
+                  <span style={{ fontSize:18 }}>🚗</span>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {[
+                    { name:'City Ride', price:'₵120', icon:'🚙' },
+                    { name:'Airport Transfer', price:'₵250', icon:'✈️' },
+                    { name:'Luxury Chauffeur', price:'₵200/hr', icon:'🎩' },
+                    { name:'Tuk Tuk Tour', price:'₵80', icon:'🛺' },
+                  ].map(t => (
+                    <button key={t.name} onClick={() => showToast(`${t.name} arranged!`, 'accent')}
+                      style={{ padding:'14px 12px', borderRadius:12, background:'rgba(255,255,255,0.03)',
+                        border:'1px solid rgba(255,255,255,0.06)', color:'#fff', cursor:'pointer',
+                        fontFamily:'inherit', textAlign:'left' }}>
+                      <div style={{ fontSize:20, marginBottom:6 }}>{t.icon}</div>
+                      <div style={{ fontSize:13, fontWeight:600 }}>{t.name}</div>
+                      <div style={{ fontSize:12, color:accentColor, marginTop:2 }}>{t.price}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </>
@@ -1183,7 +1205,7 @@ function hoursUntilCheckIn() {
                     showToast("Failed to send — try on the live site", "red");
                   }
                 }}>
-                  📄 Send Invoice
+                  📄Send Invoice
                 </button>
               </div>
             </>
