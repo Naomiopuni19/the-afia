@@ -155,6 +155,9 @@ export default function Welcome() {
   // UI state
   const [activeTab,    setActiveTab]    = useState('overview');
   const [stayEnded, setStayEnded] = useState(false);
+  if (data && data.status !== 'COMPLETED') {
+  setStayEnded(false);
+}
   const [temp,         setTemp]         = useState(22);
   const [isDND,        setIsDND]        = useState(false);
   const [keyCode,      setKeyCode]      = useState('----');
@@ -271,15 +274,19 @@ export default function Welcome() {
 useEffect(() => {
   if (!booking?.check_out_date) return;
 
+  // If guest has active booking — never show stay ended screen
+  if (booking.status === 'ACTIVE') {
+    setStayEnded(false);
+    return;
+  }
+
   const checkStayEnded = () => {
     const now = new Date();
     const checkoutDate = new Date(booking.check_out_date);
-    // Set checkout time to 12:00 PM on checkout date (Ghana time UTC+0)
     checkoutDate.setUTCHours(12, 0, 0, 0);
 
-    if (now >= checkoutDate && booking.status === 'ACTIVE') {
+    if (now >= checkoutDate && booking.status === 'COMPLETED') {
       setStayEnded(true);
-      // Auto logout after 10 seconds
       setTimeout(async () => {
         await supabase.auth.signOut();
         navigate('/login');
@@ -287,7 +294,6 @@ useEffect(() => {
     }
   };
 
-  // Check immediately and then every 5 minutes
   checkStayEnded();
   const interval = setInterval(checkStayEnded, 5 * 60 * 1000);
   return () => clearInterval(interval);
@@ -708,7 +714,10 @@ function hoursUntilCheckIn() {
               </div>
             ))}
           </div>
-          <button onClick={() => navigate('/book')}
+          <button onClick={async () => {
+  await supabase.auth.signOut();
+  navigate('/login');
+}}
             style={{ width:'100%', padding:16, borderRadius:14, border:'none',
               background:'linear-gradient(135deg, #3b82f6, #2563eb)',
               color:'#fff', fontWeight:700, fontSize:14, letterSpacing:0.5,

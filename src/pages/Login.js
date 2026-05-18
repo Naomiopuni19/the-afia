@@ -434,9 +434,13 @@ const Login = () => {
 
         <div style={styles.bottomLink}>
           New guest?{" "}
-          <Link to="/register" style={{ color: "#3b82f6", fontWeight: 700, textDecoration: "none" }}>
-            Create an account
-          </Link>
+<Link to="/register" style={{ color:"#3b82f6", fontWeight:700, textDecoration:"none" }}>
+  Create an account
+</Link>
+<br/>
+<span style={{ fontSize:11, color:"#475569", marginTop:6, display:"block" }}>
+  Returning guest? Sign in above — your account is still active.
+</span>
         </div>
 
         <Link to="/staff-portal" style={styles.staffLink}>
