@@ -5,6 +5,16 @@ import { processGuestMessage } from '../lib/concierge';
 import { sendInvoiceEmail } from '../lib/sendEmail';
 
 const HOTEL_PHONE = '+233 54 366 2896';
+// ── Responsive hook ──
+  function useWindowWidth() {
+    const [width, setWidth] = React.useState(window.innerWidth);
+    React.useEffect(() => {
+      const handle = () => setWidth(window.innerWidth);
+      window.addEventListener('resize', handle);
+      return () => window.removeEventListener('resize', handle);
+    }, []);
+    return width;
+  }
 
 const Icon = ({ d, size = 18, color = 'currentColor', style = {} }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -63,6 +73,20 @@ const css = {
   serif: { fontFamily:"'Georgia', 'Times New Roman', serif" },
   tempBtn: { width:34, height:34, borderRadius:'50%', background:C.card2, border:`1px solid ${C.border}`, color:C.text, fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' },
   chip: (sel) => ({ padding:'5px 12px', borderRadius:20, border:`1px solid ${sel ? C.accent : C.border}`, background: sel ? 'rgba(59,130,246,0.10)' : C.card2, color: sel ? C.accent : C.muted, fontSize:11, cursor:'pointer', fontFamily:'inherit' }),
+  mobileHamburger: {
+      position: 'fixed', top: 16, left: 16, zIndex: 600,
+      width: 42, height: 42, borderRadius: 12,
+      background: 'rgba(15,23,42,0.95)',
+      border: '1px solid rgba(59,130,246,0.25)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: 5, cursor: 'pointer', backdropFilter: 'blur(12px)',
+    },
+    mobileOverlay: {
+      position: 'fixed', inset: 0, zIndex: 400,
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
+    },
+ 
 };
 
 const CAT_ICON = { Starter:'🥗', Main:'🍽️', Dessert:'🍫', Drinks:'🍷', Special:'⭐', default:'🍴' };
@@ -132,6 +156,8 @@ export default function Welcome() {
   const [modifyGuests,    setModifyGuests]    = useState(2);
   const [modifyBusy,      setModifyBusy]      = useState(false);
   const [cancelBusy,      setCancelBusy]      = useState(false);
+   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = useWindowWidth() < 768;
 
   const chatRef = useRef(null);
   const staffChatRef = useRef(null);
@@ -505,14 +531,44 @@ export default function Welcome() {
 
   return (
     <div style={css.wrap}>
-      <aside style={css.sidebar}>
+ 
+      {/* ── Mobile hamburger button ── */}
+      {isMobile && (
+        <button
+          style={css.mobileHamburger}
+          onClick={() => setSidebarOpen(s => !s)}
+          aria-label="Toggle menu"
+        >
+          <div style={{ width:20, height:2, background: sidebarOpen ? C.accent : C.muted, borderRadius:2, transform: sidebarOpen ? 'rotate(45deg) translate(5px,5px)' : 'none', transition:'all 0.3s' }} />
+          <div style={{ width:20, height:2, background: sidebarOpen ? 'transparent' : C.muted, borderRadius:2, transition:'all 0.3s' }} />
+          <div style={{ width:20, height:2, background: sidebarOpen ? C.accent : C.muted, borderRadius:2, transform: sidebarOpen ? 'rotate(-45deg) translate(5px,-5px)' : 'none', transition:'all 0.3s' }} />
+        </button>
+      )}
+ 
+      {/* ── Mobile overlay (tap to close sidebar) ── */}
+      {isMobile && sidebarOpen && (
+        <div style={css.mobileOverlay} onClick={() => setSidebarOpen(false)} />
+      )}
+ 
+      <aside style={{
+        ...css.sidebar,
+        ...(isMobile ? {
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          zIndex: 500,
+          boxShadow: sidebarOpen ? '4px 0 30px rgba(0,0,0,0.5)' : 'none',
+        } : {}),
+      }}>
+ 
         <div style={css.logo}>
           <div style={css.logoIcon}>✦</div>
           <div style={{ ...css.logoText, ...css.serif }}>STAY</div>
         </div>
         <nav style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
           {navItems.map(n => (
-            <div key={n.key} style={css.navItem(activeTab === n.key)} onClick={() => setActiveTab(n.key)}>
+    <div key={n.key} style={css.navItem(activeTab === n.key)} onClick={() => { setActiveTab(n.key); if (isMobile) setSidebarOpen(false); }}>
               <Icon d={n.icon} size={16} color={activeTab === n.key ? accentColor : C.muted} />
               {n.label}
             </div>
@@ -526,13 +582,17 @@ export default function Welcome() {
 
       <main style={css.main}>
         <div style={css.bgImg} />
-        <div style={css.content}>
-          <header style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }}>
+        <div style={{
+    ...css.content,
+    padding: isMobile ? '16px' : '28px 32px',
+    paddingTop: isMobile ? '70px' : '28px',
+  }}>
+         <header style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: isMobile ? 16 : 28 }}>
             <div>
               <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>
                 {isVip ? 'Good evening — Elite Member' : 'Good evening — Welcome'}
               </div>
-              <h1 style={{ ...css.serif, fontSize:34, fontWeight:300, color:'#f8fafc', letterSpacing:'-0.5px', lineHeight:1.1 }}>Welcome, {guestName}</h1>
+             <h1 style={{ ...css.serif, fontSize: isMobile ? 24 : 34, fontWeight:300, color:'#f8fafc', letterSpacing:'-0.5px', lineHeight:1.1 }}>Welcome, {guestName}</h1>
             </div>
             <div style={{ display:'flex', gap:10, alignItems:'center' }}>
               <button onClick={() => showToast(`${myOrders.length} orders · ${ledger.length} open charges`,'accent')} style={{ width:38, height:38, borderRadius:10, border:`1px solid ${C.border}`, background:C.card, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
@@ -546,30 +606,30 @@ export default function Welcome() {
           {/* ══ OVERVIEW ══ */}
           {activeTab === 'overview' && (
             <>
-              <div style={{ ...css.glassCard, display:'flex', justifyContent:'space-between', alignItems:'center', gap:24, marginBottom:20, position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', top:-60, right:160, width:200, height:200, background:`radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)`, pointerEvents:'none' }} />
-                <div style={{ maxWidth:400 }}>
-                  <div style={{ fontSize:10, letterSpacing:'2.5px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:10 }}>▸ Suite {roomNumber} — Encrypted Access</div>
-                  <h2 style={{ ...css.serif, fontSize:34, fontWeight:300, color:'#f8fafc', lineHeight:1, marginBottom:8 }}>Digital Room Key</h2>
-                  <p style={{ fontSize:13, color:C.muted, lineHeight:1.6, marginBottom:20 }}>Hold your device near the door sensor. Your key is end-to-end encrypted and refreshes every session.</p>
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button style={css.btnPrimary} onClick={generateToken}>Generate Token</button>
-                    <button style={css.btnGhost} onClick={() => setShowKeyModal(true)}>View Details</button>
-                  </div>
-                </div>
-                <div style={{ width:150, height:150, minWidth:150, borderRadius:'50%', border:`1.5px dashed rgba(59,130,246,0.35)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:`radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)`, position:'relative' }}>
-                  <Icon d={Icons.key} size={28} color={accentColor} style={{ marginBottom:8 }} />
-                  <div style={{ fontSize:22, fontWeight:700, letterSpacing:6, color:accentColor }}>{keyCode}</div>
-                  <div style={{ fontSize:9, color:C.muted, letterSpacing:2, marginTop:4, textTransform:'uppercase' }}>Secure ID · {roomNumber}</div>
-                </div>
-              </div>
-
+             <div style={{ ...css.glassCard, display:'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent:'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 16 : 24, marginBottom:20, position:'relative', overflow:'hidden' }}>
+  <div style={{ position:'absolute', top:-60, right:160, width:200, height:200, background:`radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)`, pointerEvents:'none' }} />
+  <div style={{ maxWidth:400 }}>
+    <div style={{ fontSize:10, letterSpacing:'2.5px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:10 }}>▸ Suite {roomNumber} — Encrypted Access</div>
+    <h2 style={{ ...css.serif, fontSize: isMobile ? 24 : 34, fontWeight:300, color:'#f8fafc', lineHeight:1, marginBottom:8 }}>Digital Room Key</h2>
+    <p style={{ fontSize:13, color:C.muted, lineHeight:1.6, marginBottom:20 }}>Hold your device near the door sensor. Your key is end-to-end encrypted and refreshes every session.</p>
+    <div style={{ display:'flex', gap:10 }}>
+      <button style={css.btnPrimary} onClick={generateToken}>Generate Token</button>
+      <button style={css.btnGhost} onClick={() => setShowKeyModal(true)}>View Details</button>
+    </div>
+  </div>
+  <div style={{ width: isMobile ? 100 : 150, height: isMobile ? 100 : 150, minWidth: isMobile ? 100 : 150, borderRadius:'50%', border:`1.5px dashed rgba(59,130,246,0.35)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:`radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)`, position:'relative' }}>
+    <Icon d={Icons.key} size={isMobile ? 20 : 28} color={accentColor} style={{ marginBottom:8 }} />
+    <div style={{ fontSize: isMobile ? 18 : 22, fontWeight:700, letterSpacing:6, color:accentColor }}>{keyCode}</div>
+    <div style={{ fontSize:9, color:C.muted, letterSpacing:2, marginTop:4, textTransform:'uppercase' }}>Secure ID · {roomNumber}</div>
+  </div>
+</div>
               <div style={{ ...css.card, marginBottom:16 }}>
                 <div style={css.cardHeader}>
                   <span style={css.cardTitle}>My Reservation</span>
                   <Icon d={Icons.clock} size={16} color={C.muted} />
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:16, marginBottom:16 }}>
+             
+  <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: isMobile ? 12 : 16, marginBottom:16 }}>
                   <div>
                     <div style={{ fontSize:10, color:C.muted, letterSpacing:1.5, marginBottom:4 }}>CHECK-IN</div>
                     <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>{booking.check_in_date ? new Date(booking.check_in_date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}</div>
@@ -594,7 +654,7 @@ export default function Welcome() {
                 {!canCancelFree && <div style={{ marginTop:12, padding:'8px 12px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:10, fontSize:11, color:C.gold }}>⚠ Less than 24 hours to check-in — cancellation will not be refunded.</div>}
               </div>
 
-              <div style={{ display:'flex', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: isMobile ? 10 : 12 }}>
                 {[
                   { label:'Order Food', icon:'🍽', tab:'dining', color:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.25)', text:'#f59e0b' },
                   { label:'AI Concierge', icon:'✦', tab:'concierge', color:'rgba(59,130,246,0.1)', border:'rgba(59,130,246,0.25)', text:accentColor },
@@ -617,7 +677,8 @@ export default function Welcome() {
                 <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>Discover</div>
                 <h2 style={{ ...css.serif, fontSize:26, fontWeight:300, color:'#f8fafc' }}>Explore The Afia</h2>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
+              
+  <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:14, marginBottom:20 }}>
                 {[
                   { icon:'🏊', name:'Sky Pool', floor:14, hours:'6 AM – 11 PM', info:'Heated to 28°C', color:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.25)', action:'Reserve Cabana' },
                   { icon:'💆', name:'Zen Spa', floor:2, hours:'8 AM – 10 PM', info:'Treatments from ₵180', color:'rgba(139,92,246,0.12)', border:'rgba(139,92,246,0.25)', action:'Book Session' },
@@ -660,7 +721,7 @@ export default function Welcome() {
               </div>
               <div style={{ ...css.card, marginTop:14 }}>
                 <div style={css.cardHeader}><span style={css.cardTitle}>Transport</span><span style={{ fontSize:18 }}>🚗</span></div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+               <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr', gap:10 }}>
                   {[
                     { name:'City Ride', price:'₵120', icon:'🚙' },
                     { name:'Airport Transfer', price:'₵250', icon:'✈️' },
@@ -690,7 +751,7 @@ export default function Welcome() {
               ) : Object.keys(menuByCat).map(cat => (
                 <div key={cat} style={{ marginBottom:20 }}>
                   <div style={{ fontSize:11, color:C.muted, letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:10, fontWeight:600 }}>{cat}</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                   <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:14 }}>
                     {menuByCat[cat].map(item => (
                       <div key={item.id} style={css.card}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -797,7 +858,8 @@ export default function Welcome() {
                 <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>My Folio</div>
                 <h2 style={{ ...css.serif, fontSize:26, fontWeight:300, color:'#f8fafc' }}>Suite {roomNumber} — Statement</h2>
               </div>
-              <div style={css.grid3}>
+             
+  <div style={{ ...css.grid3, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr' }}>
                 {[
                   { label:'Total Outstanding', val:`₵${totalOwed.toFixed(2)}`, color:C.text },
                   { label:'Open Charges', val:ledger.length, color:accentColor },
@@ -829,7 +891,8 @@ export default function Welcome() {
                   </tbody>
                 </table>
               </div>
-              <div style={{ display:'flex', gap:12 }}>
+              
+  <div style={{ display: isMobile ? 'grid' : 'flex', gridTemplateColumns: isMobile ? '1fr' : undefined, gap:12 }}>
                 <button onClick={settleAll} disabled={payingNow || totalOwed <= 0} style={{ flex:1, padding:14, borderRadius:10, background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.35)', color:C.green, fontSize:13, fontWeight:600, letterSpacing:'1px', cursor:(payingNow || totalOwed<=0) ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity:(payingNow || totalOwed<=0) ? 0.6 : 1 }}>
                   {payingNow ? 'Opening payment...' : totalOwed <= 0 ? '✓ All Settled' : `✓ Pay ₵${totalOwed.toFixed(2)} (Card / MoMo)`}
                 </button>
@@ -863,7 +926,7 @@ export default function Welcome() {
                 <div style={{ fontSize:10, letterSpacing:'3px', color:accentColor, textTransform:'uppercase', fontWeight:600, marginBottom:6 }}>Room Settings</div>
                 <h2 style={{ ...css.serif, fontSize:26, fontWeight:300, color:'#f8fafc' }}>Suite Preferences</h2>
               </div>
-              <div style={css.grid2}>
+               <div style={{ ...css.grid2, gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr' }}>
                 <div style={css.card}>
                   <div style={css.cardHeader}><span style={css.cardTitle}>Climate Control</span></div>
                   <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
