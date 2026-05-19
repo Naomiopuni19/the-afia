@@ -18,6 +18,15 @@ const blinkKeyframes = `
   @keyframes toastOut{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-10px) scale(0.95)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 `;
+ function useWindowWidth() {
+    const [width, setWidth] = React.useState(window.innerWidth);
+    React.useEffect(() => {
+      const handle = () => setWidth(window.innerWidth);
+      window.addEventListener('resize', handle);
+      return () => window.removeEventListener('resize', handle);
+    }, []);
+    return width;
+  }
 
 const STATUS_COLORS = { VACANT:"#3b82f6", OCCUPIED:"#10b981", CLEANING:"#f59e0b", MAINTENANCE:"#ef4444" };
 const ORDER_STATUS = ["pending","accepted","preparing","ready","delivered","completed"];
@@ -122,6 +131,8 @@ const Dashboard = () => {
   const [chatsBlink,     setChatsBlink]     = useState(false);
   const [callRequests,   setCallRequests]   = useState([]);
   const [callsBlink,     setCallsBlink]     = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = useWindowWidth() < 768;
   const [hkTasks,        setHkTasks]        = useState({});   // { roomNumber: [tasks] }
   const [hkModal,        setHkModal]        = useState(null); // room_number being cleaned
   const [shiftNotes,     setShiftNotes]     = useState([]);
@@ -696,7 +707,22 @@ GUEST COMMUNICATIONS
     btnPrimary: { padding:"12px 24px", background:"linear-gradient(90deg,#3b82f6,#2563eb)", border:"none", borderRadius:12, color:"white", fontWeight:900, fontSize:13, cursor:"pointer" },
     btnDanger:  { padding:"8px 16px", background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.3)", color:"#ef4444", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
     btnSuccess: { padding:"8px 16px", background:"rgba(16,185,129,0.05)", border:"1px solid rgba(16,185,129,0.3)", color:"#10b981", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
-    chip: (active, color="#3b82f6") => ({ padding:"6px 16px", borderRadius:20, border:`1px solid ${active ? color : "rgba(51,65,85,0.4)"}`, background: active ? color+"22" : "transparent", color: active ? color : "#64748b", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }),
+   chip: (active, color="#3b82f6") => ({
+  padding:"6px 16px", borderRadius:20,
+  border:`1px solid ${active ? color : "rgba(51,65,85,0.4)"}`,
+  background: active ? color+"22" : "transparent",
+  color: active ? color : "#64748b",
+  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"
+}),
+mobileHamburger: {
+  position: 'fixed', top: 16, left: 16, zIndex: 600,
+  width: 42, height: 42, borderRadius: 12,
+  background: 'rgba(15,23,42,0.95)',
+  border: '1px solid rgba(59,130,246,0.25)',
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', justifyContent: 'center',
+  gap: 5, cursor: 'pointer', backdropFilter: 'blur(12px)',
+},
   };
 
   if (isLoading) return (
@@ -767,6 +793,24 @@ GUEST COMMUNICATIONS
 
   return (
     <div style={S.page}>
+ 
+      {/* Mobile hamburger */}
+      {isMobile && (
+        <button
+          style={S.mobileHamburger}
+          onClick={() => setSidebarOpen(s => !s)}
+        >
+          <div style={{ width:20, height:2, background: sidebarOpen ? '#3b82f6' : '#64748b', borderRadius:2, transform: sidebarOpen ? 'rotate(45deg) translate(5px,5px)' : 'none', transition:'all 0.3s' }} />
+          <div style={{ width:20, height:2, background: sidebarOpen ? 'transparent' : '#64748b', borderRadius:2, transition:'all 0.3s' }} />
+          <div style={{ width:20, height:2, background: sidebarOpen ? '#3b82f6' : '#64748b', borderRadius:2, transform: sidebarOpen ? 'rotate(-45deg) translate(5px,-5px)' : 'none', transition:'all 0.3s' }} />
+        </button>
+      )}
+ 
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:400, backdropFilter:'blur(2px)' }} />
+      )}
+ 
       <style>{blinkKeyframes}</style>
       {/* ── HOUSEKEEPING CHECKLIST MODAL ── */}
       {hkModal && (
@@ -834,7 +878,17 @@ GUEST COMMUNICATIONS
       />
 
       {/* ── SIDEBAR ── */}
-      <aside style={S.sidebar}>
+      <aside style={{
+    ...S.sidebar,
+    ...(isMobile ? {
+      position: 'fixed',
+      top: 0, left: 0, bottom: 0,
+      transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+      transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+      zIndex: 500,
+      boxShadow: sidebarOpen ? '4px 0 30px rgba(0,0,0,0.5)' : 'none',
+    } : {}),
+  }}>
         <div>
           <div style={{ marginBottom:50, paddingLeft:10 }}>
             <h1 style={{ fontSize:22, fontWeight:900, margin:0, letterSpacing:3, background:"linear-gradient(to right,#fff,#3b82f6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>STAYPILOT</h1>
@@ -842,7 +896,7 @@ GUEST COMMUNICATIONS
           </div>
           <nav>
             {navItems.map(n => (
-              <button key={n.key} onClick={() => { setActiveTab(n.key); if(n.key==="kitchen") setNewOrderCount(0); }} style={S.navBtn(activeTab===n.key, n.blink)}>
+             <button key={n.key} onClick={() => { setActiveTab(n.key); if(n.key==="kitchen") setNewOrderCount(0); if(isMobile) setSidebarOpen(false);; if(n.key==="kitchen") setNewOrderCount(0); }} style={S.navBtn(activeTab===n.key, n.blink)}>
                 <span>{n.label}</span>
                 {n.count > 0 && (
                   <span style={{ background:n.blink?"#f59e0b":"rgba(245,158,11,0.15)", color:n.blink?"#000":"#f59e0b", border:"1px solid rgba(245,158,11,0.4)", borderRadius:20, fontSize:10, fontWeight:900, padding:"2px 9px", animation:n.blink?"badgePulse 0.8s ease-in-out infinite":"none" }}>
@@ -917,7 +971,7 @@ GUEST COMMUNICATIONS
         {/* ══ ANALYTICS ══ (admin only) */}
         {activeTab === "analytics" && isAdmin && (
           <>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:20 }}>
+            <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap:20 }}>
               {[
                 { label:"DAILY ORDERS", value:activeOrders.length, color:"#f59e0b" },
                 { label:"OCCUPANCY",    value:`${occupancyRate}%`,  color:"#3b82f6" },
@@ -1063,7 +1117,7 @@ GUEST COMMUNICATIONS
               </div>
             </div>
 
-           <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14}}>
+           <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4,1fr)", gap:14}}>
              {["pending","accepted","preparing","ready"].map(stage => {
                 const stageOrders = displayedOrders.filter(o => o.status === stage);
                 return (
@@ -1175,7 +1229,7 @@ GUEST COMMUNICATIONS
               <p style={{ color:"#64748b", margin:"4px 0 0", fontSize:13 }}>View outstanding balances and process payments</p>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:20, marginBottom:20 }}>
+            <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:20, marginBottom:20 }}>
               {[
                 { label:"TOTAL UNPAID", value:`$${orders.filter(o=>o.payment_status==="unpaid"&&["delivered","completed"].includes(o.status)).reduce((s,o)=>s+(o.total_amount||0),0).toFixed(2)}`, color:"#ef4444" },
                 { label:"TOTAL PAID",   value:`$${totalRevenue.toFixed(2)}`, color:"#10b981" },
@@ -1195,7 +1249,7 @@ GUEST COMMUNICATIONS
                 <button onClick={()=>fetchLedger(ledgerRoom)} style={S.btnPrimary}>Fetch Ledger</button>
               </div>
 
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20, minWidth: isMobile ? "60px" : "auto" }}>
                 {bookings.map(b => (
                   <button key={b.id} onClick={()=>{ setLedgerRoom(b.room_number?.toString()); fetchLedger(b.room_number?.toString()); }}
                     style={{ padding:"6px 14px", borderRadius:10, border:"1px solid rgba(59,130,246,0.3)", background:"rgba(59,130,246,0.08)", color:"#3b82f6", fontSize:12, fontWeight:800, cursor:"pointer" }}>
@@ -1539,7 +1593,8 @@ GUEST COMMUNICATIONS
                         </button>
                       </div>
  
-                      <div style={{ flex:1, padding:20, overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
+                      <div style={{ flex:1,  padding: isMobile ? '16px' : '40px',
+  paddingTop: isMobile ? '70px' : '40px', overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
                         {chats.filter(c => c.room_number === activeChatRoom).map(m => (
                           <div key={m.id} style={{ display:"flex", justifyContent: m.sender === "staff" ? "flex-end" : "flex-start" }}>
                             <div style={{
@@ -1684,7 +1739,7 @@ GUEST COMMUNICATIONS
                 <p style={{ fontSize:14, fontWeight:700 }}>All rooms are clean — great work team!</p>
               </div>
             ) : (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+             <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16 }}>
                 {rooms.filter(r=>r.status==="CLEANING").map(r => {
                   const roomNum  = r.room_number || r.id;
                   const tasks    = hkTasks[roomNum] || [];
@@ -1759,7 +1814,7 @@ GUEST COMMUNICATIONS
  
             {!reportLoading && reportData && (
               <>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:24 }}>
+                <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16, marginBottom:24 }}>
                   {[
                     { label:"Occupancy",       val:`${reportData.occupied}/${reportData.totalRooms} (${reportData.occupancyPct}%)`, color:"#3b82f6" },
                     { label:"Check-ins",        val:reportData.checkIns.length,    color:"#10b981" },
@@ -1843,7 +1898,7 @@ GUEST COMMUNICATIONS
               </div>
             </div>
  
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 24, alignItems: "flex-start" }}>
+            <div style={{ display: "grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 24, alignItems: "flex-start" }}>
               {/* CALENDAR GRID */}
               <div style={{ background: "rgba(15,23,42,0.4)", borderRadius: 20, border: "1px solid rgba(51,65,85,0.3)", padding: 18 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
