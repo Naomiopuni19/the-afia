@@ -1,3 +1,4 @@
+import "../styles/Dashboard.css";
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell
 } from "recharts";
+
 
 // ── KEYFRAMES ────────────────────────────────────────────────────────────────
 const blinkKeyframes = `
