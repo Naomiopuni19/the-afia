@@ -18,15 +18,15 @@ const blinkKeyframes = `
   @keyframes toastOut{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-10px) scale(0.95)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 `;
-function useWindowWidth() {
-  const [width, setWidth] = React.useState(window.innerWidth);
-  React.useEffect(() => {
-    const handle = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handle);
-    return () => window.removeEventListener('resize', handle);
-  }, []);
-  return width;
-}
+ function useWindowWidth() {
+    const [width, setWidth] = React.useState(window.innerWidth);
+    React.useEffect(() => {
+      const handle = () => setWidth(window.innerWidth);
+      window.addEventListener('resize', handle);
+      return () => window.removeEventListener('resize', handle);
+    }, []);
+    return width;
+  }
 
 const STATUS_COLORS = { VACANT:"#3b82f6", OCCUPIED:"#10b981", CLEANING:"#f59e0b", MAINTENANCE:"#ef4444" };
 const ORDER_STATUS = ["pending","accepted","preparing","ready","delivered","completed"];
@@ -91,7 +91,7 @@ const Dashboard = () => {
   const [userRole, setUserRole] = useState(null);
   const [userName, setUserName] = useState("");
 
-  const [activeTab,    setActiveTab]    = useState("kitchen");
+  const [activeTab,    setActiveTab]    = useState("kitchen"); // safe default for both roles
   const [roomSearch,   setRoomSearch]   = useState("");
   const [currentTime,  setCurrentTime]  = useState(new Date().toLocaleTimeString());
   const [bookings,     setBookings]     = useState([]);
@@ -125,7 +125,7 @@ const Dashboard = () => {
   const [ledgerRoom,    setLedgerRoom]    = useState("");
   const [ledgerData,    setLedgerData]    = useState([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
-  const [chats,          setChats]          = useState([]); // open chat threads grouped by room
+   const [chats,          setChats]          = useState([]); // open chat threads grouped by room
   const [activeChatRoom, setActiveChatRoom] = useState(null);
   const [chatReplyInput, setChatReplyInput] = useState("");
   const [chatsBlink,     setChatsBlink]     = useState(false);
@@ -488,7 +488,7 @@ GUEST COMMUNICATIONS
         }
       })
       .on("postgres_changes", { event:"*", schema:"public", table:"housekeeping_tasks" }, () => fetchHkTasks())
-      .on("postgres_changes", { event:"*", schema:"public", table:"shift_notes" }, () => fetchShiftNotes())
+.on("postgres_changes", { event:"*", schema:"public", table:"shift_notes" }, () => fetchShiftNotes())
       .on("postgres_changes", { event:"INSERT", schema:"public", table:"call_requests" }, (payload) => {
         fetchCallRequests();
         setCallsBlink(true);
@@ -497,6 +497,7 @@ GUEST COMMUNICATIONS
         addToast(`📞 Call request from Suite ${payload.new.room_number}`, "info");
       }).subscribe();
     return () => supabase.removeChannel(ch);
+  
   }, [fetchRooms, fetchBookings, fetchOrders, fetchMenuItems, fetchServiceRequests, fetchChats, fetchCallRequests, addLog, addToast]);
 
   // ── ORDER ACTIONS ────────────────────────────────────────────────────────────
@@ -553,6 +554,28 @@ GUEST COMMUNICATIONS
   // ── SERVICE REQUESTS ────────────────────────────────────────────────────────
   const handleResolveRequest = async (requestId) => {
     const { error } = await supabase.from("service_requests").update({ status:"resolved" }).eq("id", requestId);
+    
+ 
+  // Mark a call request as called
+  const markCallResolved = async (id, roomNumber) => {
+    const { error } = await supabase.from("call_requests").update({ status: "called" }).eq("id", id);
+    if (error) { addToast("Failed to mark called", "error"); return; }
+    addLog(`Call to Suite ${roomNumber} marked as called`);
+    addToast(`Suite ${roomNumber} marked as called`, "success");
+    fetchCallRequests();
+  };
+ 
+  // Close a chat thread from staff side
+  const closeChatThread = async (roomNumber) => {
+    await supabase.from("staff_chats")
+      .update({ thread_status: "closed", handled: true })
+      .eq("room_number", roomNumber)
+      .eq("thread_status", "open");
+    if (activeChatRoom === roomNumber) setActiveChatRoom(null);
+    addToast(`Chat with Suite ${roomNumber} closed`, "success");
+    fetchChats();
+  };
+ 
     if (!error) {
       setServiceRequests(p => p.filter(r => r.id !== requestId));
       setServiceRequestCount(p => Math.max(0, p-1));
@@ -673,87 +696,37 @@ GUEST COMMUNICATIONS
 
   // ── STYLES ───────────────────────────────────────────────────────────────────
   const S = {
-    page: { background:"radial-gradient(circle at top right,#0f172a,#020617)", minHeight:"100vh", color:"white", display:"flex", fontFamily:"'Plus Jakarta Sans','Inter',sans-serif", overflowX:"hidden", flexDirection: "column" },
-    container: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      width: "100%",
-      maxWidth: "1200px",
-      margin: "0 auto",
-    },
-    sidebar: { 
-      width: isMobile ? "100%" : 280, 
-      background:"rgba(15,23,42,0.8)", 
-      padding:"40px 20px", 
-      borderRight: isMobile ? "none" : "1px solid rgba(51,65,85,0.5)", 
-      display:"flex", 
-      flexDirection:"column", 
-      justifyContent:"space-between", 
-      zIndex:10, 
-      position: isMobile ? "fixed" : "relative",
-      top: isMobile ? 0 : "auto",
-      left: isMobile ? 0 : "auto",
-      bottom: isMobile ? 0 : "auto",
-      height: isMobile ? "100vh" : "auto",
-      transform: isMobile && sidebarOpen ? "translateX(0)" : isMobile ? "translateX(-100%)" : "none",
-      transition: isMobile ? "transform 0.3s cubic-bezier(0.4,0,0.2,1)" : "none",
-      boxShadow: isMobile && sidebarOpen ? "4px 0 30px rgba(0,0,0,0.5)" : "none",
-    },
-    main: { 
-      flex:1, 
-      marginLeft: isMobile ? 0 : 280, 
-      padding: isMobile ? "20px" : "40px 60px", 
-      display:"flex", 
-      flexDirection:"column", 
-      gap:30, 
-      overflowY:"auto",
-      width: "100%",
-    },
-    navBtn: (active, blink) => ({ 
-      width:"100%", 
-      padding:"14px 20px", 
-      marginBottom:10, 
-      borderRadius:16, 
-      border: active ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent", 
-      background: active ? "linear-gradient(90deg,rgba(59,130,246,0.15),transparent)" : "transparent", 
-      color: active ? "#3b82f6" : "#64748b", 
-      fontSize:14, 
-      fontWeight:700, 
-      cursor:"pointer", 
-      transition:"all 0.3s", 
-      textAlign:"left", 
-      display:"flex", 
-      justifyContent:"space-between", 
-      alignItems:"center", 
-      ...(blink ? { animation:"navBlink 0.8s ease-in-out infinite" } : {}) 
-    }),
+    page: { background:"radial-gradient(circle at top right,#0f172a,#020617)", minHeight:"100vh", color:"white", display:"flex", fontFamily:"'Plus Jakarta Sans','Inter',sans-serif", overflowX:"hidden" },
+    sidebar: { width:280, background:"rgba(15,23,42,0.8)", padding:"40px 20px", borderRight:"1px solid rgba(51,65,85,0.5)", display:"flex", flexDirection:"column", justifyContent:"space-between", zIndex:10, position:"fixed", height:"100vh", backdropFilter:"blur(20px)", overflowY:"auto" },
+    main: { flex:1, marginLeft:280, padding:"40px 60px", display:"flex", flexDirection:"column", gap:30, overflowY:"auto" },
+    navBtn: (active, blink) => ({ width:"100%", padding:"14px 20px", marginBottom:10, borderRadius:16, border: active ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent", background: active ? "linear-gradient(90deg,rgba(59,130,246,0.15),transparent)" : "transparent", color: active ? "#3b82f6" : "#64748b", fontSize:14, fontWeight:700, cursor:"pointer", transition:"all 0.3s", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center", ...(blink ? { animation:"navBlink 0.8s ease-in-out infinite" } : {}) }),
     statCard: { background:"linear-gradient(135deg,rgba(30,41,59,0.4),rgba(15,23,42,0.4))", padding:25, borderRadius:28, border:"1px solid rgba(51,65,85,0.3)", backdropFilter:"blur(10px)", cursor:"default" },
-    glass: { background:"rgba(15,23,42,0.3)", borderRadius:32, border:"1px solid rgba(51,65,85,0.3)", padding:30, backdropFilter:"blur(40px)", boxShadow:"0 20px 40px rgba(0,0,0,0.2)", width: "100%" },
+    glass: { background:"rgba(15,23,42,0.3)", borderRadius:32, border:"1px solid rgba(51,65,85,0.3)", padding:30, backdropFilter:"blur(40px)", boxShadow:"0 20px 40px rgba(0,0,0,0.2)" },
     input: { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(51,65,85,0.5)", borderRadius:12, padding:"12px 16px", color:"white", fontSize:13, fontWeight:600, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" },
     label: { fontSize:10, fontWeight:800, letterSpacing:"1.5px", color:"#64748b", marginBottom:6, display:"block" },
     btnPrimary: { padding:"12px 24px", background:"linear-gradient(90deg,#3b82f6,#2563eb)", border:"none", borderRadius:12, color:"white", fontWeight:900, fontSize:13, cursor:"pointer" },
     btnDanger:  { padding:"8px 16px", background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.3)", color:"#ef4444", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
     btnSuccess: { padding:"8px 16px", background:"rgba(16,185,129,0.05)", border:"1px solid rgba(16,185,129,0.3)", color:"#10b981", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
-    chip: (active, color="#3b82f6") => ({
-      padding:"6px 16px", borderRadius:20,
-      border:`1px solid ${active ? color : "rgba(51,65,85,0.4)"}`,
-      background: active ? color+"22" : "transparent",
-      color: active ? color : "#64748b",
-      fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"
-    }),
-    mobileHamburger: {
-      position: 'fixed', top: 16, left: 16, zIndex: 600,
-      width: 42, height: 42, borderRadius: 12,
-      background: 'rgba(15,23,42,0.95)',
-      border: '1px solid rgba(59,130,246,0.25)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      gap: 5, cursor: 'pointer', backdropFilter: 'blur(12px)',
-    },
+   chip: (active, color="#3b82f6") => ({
+  padding:"6px 16px", borderRadius:20,
+  border:`1px solid ${active ? color : "rgba(51,65,85,0.4)"}`,
+  background: active ? color+"22" : "transparent",
+  color: active ? color : "#64748b",
+  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"
+}),
+mobileHamburger: {
+  position: 'fixed', top: 16, left: 16, zIndex: 600,
+  width: 42, height: 42, borderRadius: 12,
+  background: 'rgba(15,23,42,0.95)',
+  border: '1px solid rgba(59,130,246,0.25)',
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', justifyContent: 'center',
+  gap: 5, cursor: 'pointer', backdropFilter: 'blur(12px)',
+},
   };
 
   if (isLoading) return (
-    <div style={{ ...S.page, alignItems:"center", justifyContent:"center", display: "flex" }}>
+    <div style={{ ...S.page, alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center" }}>
         <div style={{ width:48, height:48, border:"3px solid rgba(59,130,246,0.2)", borderTop:"3px solid #3b82f6", borderRadius:"50%", margin:"0 auto 20px", animation:"spin 1s linear infinite" }} />
         <p style={{ color:"#64748b", fontSize:13, fontWeight:700, letterSpacing:2 }}>ESTABLISHING LINK...</p>
@@ -762,6 +735,9 @@ GUEST COMMUNICATIONS
     </div>
   );
 
+ 
+  
+ 
   const monthLabel = calMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   const calYear  = calMonth.getFullYear();
   const calMon   = calMonth.getMonth();
@@ -817,7 +793,7 @@ GUEST COMMUNICATIONS
 
   return (
     <div style={S.page}>
-
+ 
       {/* Mobile hamburger */}
       {isMobile && (
         <button
@@ -829,12 +805,12 @@ GUEST COMMUNICATIONS
           <div style={{ width:20, height:2, background: sidebarOpen ? '#3b82f6' : '#64748b', borderRadius:2, transform: sidebarOpen ? 'rotate(-45deg) translate(5px,-5px)' : 'none', transition:'all 0.3s' }} />
         </button>
       )}
-
+ 
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:400, backdropFilter:'blur(2px)' }} />
       )}
-
+ 
       <style>{blinkKeyframes}</style>
       {/* ── HOUSEKEEPING CHECKLIST MODAL ── */}
       {hkModal && (
@@ -891,7 +867,7 @@ GUEST COMMUNICATIONS
           </div>
         </div>
       )}
-
+ 
       <Toast toasts={toasts} />
       <ConfirmDialog
         open={!!confirmDialog}
@@ -903,16 +879,16 @@ GUEST COMMUNICATIONS
 
       {/* ── SIDEBAR ── */}
       <aside style={{
-        ...S.sidebar,
-        ...(isMobile ? {
-          position: 'fixed',
-          top: 0, left: 0, bottom: 0,
-          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-          zIndex: 500,
-          boxShadow: sidebarOpen ? '4px 0 30px rgba(0,0,0,0.5)' : 'none',
-        } : {}),
-      }}>
+    ...S.sidebar,
+    ...(isMobile ? {
+      position: 'fixed',
+      top: 0, left: 0, bottom: 0,
+      transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+      transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+      zIndex: 500,
+      boxShadow: sidebarOpen ? '4px 0 30px rgba(0,0,0,0.5)' : 'none',
+    } : {}),
+  }}>
         <div>
           <div style={{ marginBottom:50, paddingLeft:10 }}>
             <h1 style={{ fontSize:22, fontWeight:900, margin:0, letterSpacing:3, background:"linear-gradient(to right,#fff,#3b82f6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>STAYPILOT</h1>
@@ -980,31 +956,1158 @@ GUEST COMMUNICATIONS
 
       {/* ── MAIN ── */}
       <main style={S.main}>
-        {/* Your existing content */}
+        <header style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div>
+            <h2 style={{ fontSize:36, fontWeight:900, margin:0, letterSpacing:-1 }}>{isAdmin ? "Elite Intelligence" : "Operations View"}</h2>
+            <p style={{ color:"#64748b", margin:"5px 0 0", fontSize:14, fontWeight:600 }}>
+              {isAdmin ? "Admin Root Access" : `Staff View · ${userName}`} · <span style={{ color:"#3b82f6" }}>{currentTime}</span>
+            </p>
+          </div>
+          <div style={{ color:"#10b981", background:"rgba(16,185,129,0.1)", padding:"8px 24px", borderRadius:50, fontSize:11, fontWeight:900, border:"1px solid rgba(16,185,129,0.2)", letterSpacing:1 }}>
+            ENCRYPTED UPLINK
+          </div>
+        </header>
+
+        {/* ══ ANALYTICS ══ (admin only) */}
+        {activeTab === "analytics" && isAdmin && (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap:20 }}>
+              {[
+                { label:"DAILY ORDERS", value:activeOrders.length, color:"#f59e0b" },
+                { label:"OCCUPANCY",    value:`${occupancyRate}%`,  color:"#3b82f6" },
+                { label:"VIP PATRONS",  value:vipCount,             color:"#f59e0b" },
+                { label:"REVENUE",      value:`$${totalRevenue.toLocaleString()}`, color:"#10b981" },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={S.statCard} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-5px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+                  <small style={{ color:"#64748b", fontWeight:800, fontSize:10, letterSpacing:"1.5px" }}>{label}</small>
+                  <h3 style={{ fontSize:32, margin:"10px 0 0", fontWeight:900, color }}>{value}</h3>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1.2fr", gap:30 }}>
+              <div style={S.glass}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:25 }}>
+                  <h4 style={{ margin:0, fontWeight:900, fontSize:16 }}>Guest Manifest</h4>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <input type="text" value={guestFilter} onChange={e=>setGuestFilter(e.target.value)} placeholder="Filter guests..." style={{ ...S.input, width:200 }} />
+                    <span style={{ fontSize:10, color:"#475569", fontWeight:800, whiteSpace:"nowrap" }}>{filteredBookings.length} RECORDS</span>
+                  </div>
+                </div>
+                <div style={{ maxHeight:400, overflowY:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <thead>
+                      <tr style={{ color:"#475569", fontSize:11, textAlign:"left", borderBottom:"1px solid rgba(51,65,85,0.5)" }}>
+                        {["GUEST IDENTITY","LOCATION","ORDERS","PROCEDURE"].map(h => <th key={h} style={{ paddingBottom:15, paddingRight:10 }}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBookings.map(b => {
+                        const guestOrders = orders.filter(o => o.room_number?.toString()===b.room_number?.toString() && !["completed","cancelled"].includes(o.status));
+                        return (
+                          <tr key={b.id} onClick={() => setSelectedGuest(b)} style={{ borderBottom:"1px solid rgba(51,65,85,0.2)", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="rgba(59,130,246,0.03)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <td style={{ padding:"18px 0", fontSize:14 }}>
+                              <span style={{ fontWeight:700, color:b.is_vip?"#f59e0b":"white" }}>{b.guest_name}</span>
+                              {b.is_vip && <span style={{ background:"linear-gradient(45deg,#f59e0b,#fbbf24)", color:"#000", padding:"3px 8px", borderRadius:6, fontSize:9, fontWeight:900, marginLeft:8 }}>VIP</span>}
+                            </td>
+                            <td style={{ color:"#3b82f6", fontWeight:800, fontSize:13 }}>SUITE {b.room_number}</td>
+                            <td style={{ fontSize:12 }}>
+                              {guestOrders.length > 0
+                                ? <span style={{ color:"#f59e0b", fontWeight:800 }}>{guestOrders.length} active</span>
+                                : <span style={{ color:"#475569" }}>—</span>}
+                            </td>
+                            <td style={{ textAlign:"right" }}>
+                              <button onClick={e=>{ e.stopPropagation(); setConfirmDialog({ title:"Authorize Check-Out", message:`Check-out ${b.guest_name} from Suite ${b.room_number}?`, onConfirm:()=>handleCheckOut(b.id,b.room_number) }); }} style={S.btnDanger}>CHECK-OUT</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!filteredBookings.length && <tr><td colSpan="4" style={{ padding:40, textAlign:"center", color:"#475569", fontSize:14 }}>{guestFilter ? "No match." : "No active guests."}</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ display:"flex", flexDirection:"column", gap:30 }}>
+                <div style={S.glass}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:20 }}>
+                    <h4 style={{ fontSize:11, color:"#94a3b8", margin:0, letterSpacing:"1.5px", fontWeight:800 }}>REAL-TIME GRID</h4>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(10,1fr)", gap:8 }}>
+                    {rooms.map(r => (
+                      <div key={r.id} title={`Suite ${r.id} — ${r.status}`}
+                        style={{ width:"100%", paddingBottom:"100%", background:r.color, borderRadius:6, cursor:"pointer", transition:"all 0.2s" }}
+                        onClick={() => { setRoomSearch(r.id); setActiveTab("rooms"); }}
+                        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.2)"}
+                        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"} />
+                    ))}
+                  </div>
+                </div>
+                <div style={{ ...S.glass, flex:1 }}>
+                  <small style={{ color:"#64748b", fontWeight:800, fontSize:9, letterSpacing:2, marginBottom:15, display:"block" }}>ACTIVITY LOG</small>
+                  {logs.map((log,i) => (
+                    <div key={i} style={{ fontSize:11, marginBottom:10, display:"flex", gap:10, opacity:1-i*0.1 }}>
+                      <span style={{ color:"#3b82f6", fontWeight:800 }}>[{log.time}]</span>
+                      <span style={{ color:"#94a3b8" }}>{log.action}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 0.8fr", gap:30 }}>
+              <div style={S.glass}>
+                <h4 style={{ fontSize:11, color:"#94a3b8", marginBottom:25, letterSpacing:"1.5px", fontWeight:900 }}>BOOKINGS & ORDERS TREND</h4>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={lineData}>
+                    <XAxis dataKey="day" tick={{ fill:"#475569", fontSize:10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill:"#475569", fontSize:10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={3} dot={{ fill:"#3b82f6", r:4 }} name="Bookings" />
+                    <Line type="monotone" dataKey="orders"   stroke="#f59e0b" strokeWidth={3} dot={{ fill:"#f59e0b", r:4 }} name="Orders" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={S.glass}>
+                <h4 style={{ fontSize:11, color:"#94a3b8", marginBottom:25, letterSpacing:"1.5px", fontWeight:900 }}>ORDER STATUS BREAKDOWN</h4>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={Object.entries(ORDER_LABELS).map(([k,v])=>({ name:v, count:orders.filter(o=>o.status===k).length }))} barSize={24}>
+                    <XAxis dataKey="name" tick={{ fill:"#475569", fontSize:9 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill:"#475569", fontSize:10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[6,6,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={S.glass}>
+                <h4 style={{ fontSize:11, color:"#94a3b8", marginBottom:15, letterSpacing:"1.5px", fontWeight:900 }}>SUITE ALLOCATION</h4>
+                <ResponsiveContainer width="100%" height={140}>
+                  <PieChart>
+                    <Pie data={donutData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" strokeWidth={0} paddingAngle={5}>
+                      {donutData.map((entry,i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:15 }}>
+                  {donutData.map((d,i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:6, fontSize:9, color:"#94a3b8", fontWeight:800 }}>
+                      <div style={{ width:6, height:6, borderRadius:"50%", background:d.color }} />
+                      {d.name.toUpperCase()} <span style={{ color:"white" }}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ KITCHEN / ORDERS ══ */}
+        {activeTab === "kitchen" && (
+          <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+              <div>
+                <h3 style={{ fontSize:28, fontWeight:900, margin:0, letterSpacing:-1 }}>Kitchen Orders</h3>
+                <p style={{ color:"#64748b", margin:"4px 0 0", fontSize:13 }}>{activeOrders.length} active · {orders.filter(o=>o.status==="completed").length} completed today</p>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                {[["all","All"],["active","Active"],["completed","Done"]].map(([k,l]) => (
+                  <button key={k} style={S.chip(kitchenFilter===k, "#3b82f6")} onClick={()=>setKitchenFilter(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+           <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4,1fr)", gap:14}}>
+             {["pending","accepted","preparing","ready"].map(stage => {
+                const stageOrders = displayedOrders.filter(o => o.status === stage);
+                return (
+                  <div key={stage}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                      <div style={{ width:10, height:10, borderRadius:"50%", background:ORDER_COLORS[stage] }} />
+                      <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:ORDER_COLORS[stage] }}>{ORDER_LABELS[stage].toUpperCase()}</span>
+                      <span style={{ fontSize:11, color:"#475569", marginLeft:"auto" }}>{stageOrders.length}</span>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                      {stageOrders.map(order => (
+                        <div key={order.id} style={{ background:"rgba(15,23,42,0.6)", border:`1px solid ${ORDER_COLORS[order.status]}33`, borderRadius:20, padding:20, backdropFilter:"blur(10px)" }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                            <div>
+                              <div style={{ fontSize:11, color:"#64748b", fontWeight:700 }}>ORDER #{order.id}</div>
+                              <div style={{ fontSize:16, fontWeight:900, color:"white" }}>SUITE {order.room_number}</div>
+                              <div style={{ fontSize:12, color:"#94a3b8" }}>{order.guest_name}</div>
+                            </div>
+                            <div style={{ textAlign:"right" }}>
+                              {isAdmin && <div style={{ fontSize:18, fontWeight:900, color:"#10b981" }}>${order.total_amount?.toFixed(2)}</div>}
+                              <div style={{ fontSize:10, color:"#475569" }}>{new Date(order.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:10, marginBottom:14 }}>
+                            {(Array.isArray(order.items) ? order.items : JSON.parse(order.items||"[]")).map((item,i) => (
+                              <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#cbd5e1", marginBottom:4 }}>
+                                <span>{item.qty}× {item.name}</span>
+                                {isAdmin && <span style={{ color:"#94a3b8" }}>${(item.price*item.qty).toFixed(2)}</span>}
+                              </div>
+                            ))}
+                            {order.notes && <p style={{ fontSize:11, color:"#f59e0b", marginTop:8, fontStyle:"italic" }}>Note: {order.notes}</p>}
+                          </div>
+
+                          <div style={{ display:"flex", gap:8 }}>
+                            {nextStatus(order.status) && nextStatus(order.status) !== "completed" && (
+                              <button onClick={()=>updateOrderStatus(order.id, nextStatus(order.status), order.room_number)}
+                                style={{ flex:1, padding:"10px", borderRadius:12, background: ORDER_COLORS[nextStatus(order.status)]+"22", border:`1px solid ${ORDER_COLORS[nextStatus(order.status)]}55`, color:ORDER_COLORS[nextStatus(order.status)], fontSize:11, fontWeight:900, cursor:"pointer" }}>
+                                → {ORDER_LABELS[nextStatus(order.status)]}
+                              </button>
+                            )}
+                            {order.status === "ready" && (
+                              <button onClick={()=>updateOrderStatus(order.id,"delivered",order.room_number)}
+                                style={{ flex:1, padding:"10px", borderRadius:12, background:"rgba(16,185,129,0.15)", border:"1px solid rgba(16,185,129,0.4)", color:"#10b981", fontSize:11, fontWeight:900, cursor:"pointer" }}>
+                                ✓ Mark Delivered
+                              </button>
+                            )}
+                            {order.status === "pending" && (
+                              <button onClick={()=>updateOrderStatus(order.id,"accepted",order.room_number)}
+                                style={{ flex:1, padding:"10px", borderRadius:12, background:"rgba(59,130,246,0.15)", border:"1px solid rgba(59,130,246,0.4)", color:"#3b82f6", fontSize:11, fontWeight:900, cursor:"pointer" }}>
+                                ✓ Accept Order
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {!stageOrders.length && (
+                        <div style={{ textAlign:"center", padding:"30px 20px", color:"#334155", fontSize:13, border:"1px dashed rgba(51,65,85,0.3)", borderRadius:20 }}>No {ORDER_LABELS[stage].toLowerCase()} orders</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={S.glass}>
+              <h4 style={{ margin:"0 0 20px", fontWeight:900 }}>Delivered & Completed</h4>
+              <div style={{ maxHeight:300, overflowY:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <thead>
+                    <tr style={{ fontSize:10, color:"#475569", borderBottom:"1px solid rgba(51,65,85,0.4)" }}>
+                      {(isAdmin ? ["ORDER","SUITE","GUEST","ITEMS","TOTAL","STATUS","PAYMENT","TIME"] : ["ORDER","SUITE","GUEST","ITEMS","STATUS","TIME"]).map(h=><th key={h} style={{ paddingBottom:12, textAlign:"left", fontWeight:800 }}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.filter(o=>["delivered","completed"].includes(o.status)).map(o=>(
+                      <tr key={o.id} style={{ borderBottom:"1px solid rgba(51,65,85,0.2)", fontSize:13 }}>
+                        <td style={{ padding:"12px 0", fontWeight:800 }}>#{o.id}</td>
+                        <td style={{ color:"#3b82f6", fontWeight:700 }}>Suite {o.room_number}</td>
+                        <td style={{ color:"#94a3b8" }}>{o.guest_name}</td>
+                        <td style={{ color:"#94a3b8" }}>{Array.isArray(o.items)?o.items.length:"-"} items</td>
+                        {isAdmin && <td style={{ color:"#10b981", fontWeight:900 }}>${o.total_amount?.toFixed(2)}</td>}
+                        <td><StatusBadge status={o.status} /></td>
+                        {isAdmin && (
+                          <td>
+                            <span style={{ fontSize:10, fontWeight:800, color:o.payment_status==="paid"?"#10b981":"#f59e0b" }}>
+                              {o.payment_status==="paid" ? "✓ PAID" : "UNPAID"}
+                            </span>
+                          </td>
+                        )}
+                        <td style={{ color:"#475569", fontSize:11 }}>{new Date(o.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td>
+                      </tr>
+                    ))}
+                    {!orders.filter(o=>["delivered","completed"].includes(o.status)).length && (
+                      <tr><td colSpan={isAdmin ? "8" : "6"} style={{ padding:30, textAlign:"center", color:"#475569" }}>No completed orders yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ BILLING ══ (admin only) */}
+        {activeTab === "billing" && isAdmin && (
+          <>
+            <div style={{ marginBottom:20 }}>
+              <h3 style={{ fontSize:28, fontWeight:900, margin:0, letterSpacing:-1 }}>Guest Billing</h3>
+              <p style={{ color:"#64748b", margin:"4px 0 0", fontSize:13 }}>View outstanding balances and process payments</p>
+            </div>
+
+            <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:20, marginBottom:20 }}>
+              {[
+                { label:"TOTAL UNPAID", value:`$${orders.filter(o=>o.payment_status==="unpaid"&&["delivered","completed"].includes(o.status)).reduce((s,o)=>s+(o.total_amount||0),0).toFixed(2)}`, color:"#ef4444" },
+                { label:"TOTAL PAID",   value:`$${totalRevenue.toFixed(2)}`, color:"#10b981" },
+                { label:"ACTIVE ROOMS", value:statusCounts.OCCUPIED, color:"#3b82f6" },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={S.statCard}>
+                  <small style={{ color:"#64748b", fontWeight:800, fontSize:10, letterSpacing:"1.5px" }}>{label}</small>
+                  <h3 style={{ fontSize:30, margin:"10px 0 0", fontWeight:900, color }}>{value}</h3>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ ...S.glass, marginBottom:20 }}>
+              <h4 style={{ margin:"0 0 20px", fontWeight:900 }}>Room Ledger Lookup</h4>
+              <div style={{ display:"flex", gap:12, marginBottom:20 }}>
+                <input value={ledgerRoom} onChange={e=>setLedgerRoom(e.target.value)} placeholder="Enter room number (e.g. 101)" style={{ ...S.input, width:300 }} />
+                <button onClick={()=>fetchLedger(ledgerRoom)} style={S.btnPrimary}>Fetch Ledger</button>
+              </div>
+
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20, minWidth: isMobile ? "60px" : "auto" }}>
+                {bookings.map(b => (
+                  <button key={b.id} onClick={()=>{ setLedgerRoom(b.room_number?.toString()); fetchLedger(b.room_number?.toString()); }}
+                    style={{ padding:"6px 14px", borderRadius:10, border:"1px solid rgba(59,130,246,0.3)", background:"rgba(59,130,246,0.08)", color:"#3b82f6", fontSize:12, fontWeight:800, cursor:"pointer" }}>
+                    Suite {b.room_number} — {b.guest_name}
+                  </button>
+                ))}
+              </div>
+
+              {ledgerLoading && <div style={{ textAlign:"center", padding:20, color:"#64748b" }}>Loading...</div>}
+
+              {!ledgerLoading && ledgerData.length > 0 && (
+                <>
+                  <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:20 }}>
+                    <thead>
+                      <tr style={{ fontSize:10, color:"#475569", borderBottom:"1px solid rgba(51,65,85,0.4)" }}>
+                        {["DESCRIPTION","ORDER #","AMOUNT","STATUS","DATE"].map(h=><th key={h} style={{ paddingBottom:12, textAlign:"left", fontWeight:800 }}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ledgerData.map(entry => (
+                        <tr key={entry.id} style={{ borderBottom:"1px solid rgba(51,65,85,0.2)", fontSize:13 }}>
+                          <td style={{ padding:"12px 0" }}>{entry.description}</td>
+                          <td style={{ color:"#3b82f6" }}>{entry.order_id ? `#${entry.order_id}` : "—"}</td>
+                          <td style={{ color:"#10b981", fontWeight:900 }}>${entry.amount?.toFixed(2)}</td>
+                          <td><span style={{ fontSize:10, fontWeight:800, color:entry.status==="paid"?"#10b981":"#f59e0b" }}>{entry.status==="paid"?"✓ PAID":"PENDING"}</span></td>
+                          <td style={{ fontSize:11, color:"#475569" }}>{new Date(entry.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", background:"rgba(16,185,129,0.05)", borderRadius:16, border:"1px solid rgba(16,185,129,0.2)" }}>
+                    <div>
+                      <div style={{ fontSize:12, color:"#64748b", fontWeight:700 }}>TOTAL OUTSTANDING — Suite {ledgerRoom}</div>
+                      <div style={{ fontSize:28, fontWeight:900, color:"white" }}>${ledgerData.reduce((s,e)=>s+e.amount,0).toFixed(2)}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:10 }}>
+                      {["cash","card","room_charge"].map(method => (
+                        <button key={method} onClick={()=>setConfirmDialog({ title:"Settle Bill", message:`Mark Suite ${ledgerRoom} bill as paid via ${method}?`, onConfirm:()=>handleSettleLedger(ledgerRoom,method) })}
+                          style={{ padding:"10px 18px", borderRadius:12, border:"1px solid rgba(16,185,129,0.3)", background:"rgba(16,185,129,0.08)", color:"#10b981", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                          {method === "room_charge" ? "Room Charge" : method.charAt(0).toUpperCase()+method.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!ledgerLoading && ledgerData.length === 0 && ledgerRoom && (
+                <div style={{ textAlign:"center", padding:30, color:"#475569" }}>No outstanding charges for Suite {ledgerRoom}.</div>
+              )}
+            </div>
+
+            <div style={S.glass}>
+              <h4 style={{ margin:"0 0 20px", fontWeight:900 }}>All Unpaid Orders</h4>
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                {orders.filter(o=>o.payment_status==="unpaid"&&["delivered","completed"].includes(o.status)).map(o=>(
+                  <div key={o.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", borderRadius:16, background:"rgba(245,158,11,0.04)", border:"1px solid rgba(245,158,11,0.15)" }}>
+                    <div>
+                      <span style={{ fontWeight:800 }}>Suite {o.room_number}</span>
+                      <span style={{ color:"#64748b", fontSize:12, marginLeft:12 }}>{o.guest_name}</span>
+                      <span style={{ color:"#94a3b8", fontSize:11, marginLeft:12 }}>Order #{o.id}</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                      <span style={{ fontSize:20, fontWeight:900, color:"#f59e0b" }}>${o.total_amount?.toFixed(2)}</span>
+                      <button onClick={()=>{ setLedgerRoom(o.room_number?.toString()); fetchLedger(o.room_number?.toString()); setActiveTab("billing"); }}
+                        style={{ ...S.btnSuccess, fontSize:11 }}>View Ledger</button>
+                    </div>
+                  </div>
+                ))}
+                {!orders.filter(o=>o.payment_status==="unpaid"&&["delivered","completed"].includes(o.status)).length && (
+                  <div style={{ textAlign:"center", padding:30, color:"#475569" }}>All clear — no unpaid orders.</div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ MENU CATALOG ══ (admin only) */}
+        {activeTab === "catalog" && isAdmin && (
+          <>
+            <div style={{ marginBottom:20 }}>
+              <h3 style={{ fontSize:28, fontWeight:900, margin:0, letterSpacing:-1 }}>Menu Catalog</h3>
+              <p style={{ color:"#64748b", margin:"4px 0 0", fontSize:13 }}>Items appear in real-time on the guest ordering page</p>
+            </div>
+
+            <div style={S.glass}>
+              <h4 style={{ margin:"0 0 20px", fontWeight:900 }}>{editingMenu ? "✏ Edit Item" : "+ Add New Item"}</h4>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+                <div>
+                  <label style={S.label}>ITEM NAME *</label>
+                  <input value={menuForm.name} onChange={e=>setMenuForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Grilled Wagyu Beef" style={S.input} />
+                </div>
+                <div>
+                  <label style={S.label}>PRICE (USD) *</label>
+                  <input type="number" value={menuForm.price} onChange={e=>setMenuForm(f=>({...f,price:e.target.value}))} placeholder="0.00" style={S.input} />
+                </div>
+                <div>
+                  <label style={S.label}>CATEGORY</label>
+                  <select value={menuForm.category} onChange={e=>setMenuForm(f=>({...f,category:e.target.value}))} style={{ ...S.input, appearance:"none" }}>
+                    {["Starter","Main","Dessert","Drinks","Special"].map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={S.label}>IMAGE URL (or upload below)</label>
+                  <input value={menuForm.image_url} onChange={e=>setMenuForm(f=>({...f,image_url:e.target.value}))} placeholder="https://..." style={S.input} />
+                </div>
+                <div style={{ gridColumn:"1/-1" }}>
+                  <label style={S.label}>DESCRIPTION</label>
+                  <textarea value={menuForm.description} onChange={e=>setMenuForm(f=>({...f,description:e.target.value}))} placeholder="Brief description of the dish..." rows={2} style={{ ...S.input, resize:"vertical" }} />
+                </div>
+                <div>
+                  <label style={S.label}>UPLOAD IMAGE (Supabase Storage)</label>
+                  <input type="file" accept="image/*" onChange={e=>setMenuImageFile(e.target.files[0])} style={{ ...S.input, cursor:"pointer" }} />
+                  {menuImageFile && <div style={{ fontSize:11, color:"#10b981", marginTop:6 }}>✓ {menuImageFile.name} ready to upload</div>}
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <label style={{ ...S.label, margin:0 }}>AVAILABLE</label>
+                  <div onClick={()=>setMenuForm(f=>({...f,is_available:!f.is_available}))}
+                    style={{ width:48, height:26, borderRadius:13, background:menuForm.is_available?"#10b981":"rgba(51,65,85,0.5)", cursor:"pointer", position:"relative", transition:"all 0.3s" }}>
+                    <div style={{ position:"absolute", top:3, left:menuForm.is_available?27:3, width:18, height:18, borderRadius:"50%", background:"white", transition:"all 0.3s" }} />
+                  </div>
+                  <span style={{ fontSize:12, color:menuForm.is_available?"#10b981":"#64748b", fontWeight:700 }}>{menuForm.is_available?"Active":"Hidden"}</span>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:12, marginTop:24 }}>
+                <button onClick={handleMenuSave} disabled={menuUploading} style={{ ...S.btnPrimary, opacity:menuUploading?0.6:1 }}>
+                  {menuUploading ? "Uploading..." : editingMenu ? "Save Changes" : "Add to Menu"}
+                </button>
+                {editingMenu && (
+                  <button onClick={()=>{ setEditingMenu(null); setMenuForm({ name:"", description:"", price:"", category:"Main", image_url:"", is_available:true }); setMenuImageFile(null); }}
+                    style={{ padding:"12px 24px", background:"transparent", border:"1px solid rgba(51,65,85,0.4)", borderRadius:12, color:"#64748b", fontWeight:700, cursor:"pointer" }}>
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {["Starter","Main","Dessert","Drinks","Special"].map(cat => {
+              const catItems = menuItems.filter(m => m.category === cat);
+              if (!catItems.length) return null;
+              return (
+                <div key={cat} style={S.glass}>
+                  <h4 style={{ margin:"0 0 20px", fontWeight:900, fontSize:16 }}>
+                    {cat} <span style={{ fontSize:12, color:"#64748b", fontWeight:600 }}>({catItems.length} items)</span>
+                  </h4>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:16 }}>
+                    {catItems.map(item => (
+                      <div key={item.id} style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${item.is_available?"rgba(51,65,85,0.3)":"rgba(239,68,68,0.2)"}`, borderRadius:16, overflow:"hidden" }}>
+                        {item.image_url && <img src={item.image_url} alt={item.name} style={{ width:"100%", height:140, objectFit:"cover" }} onError={e=>e.target.style.display="none"} />}
+                        <div style={{ padding:16 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontSize:14, fontWeight:800, marginBottom:4 }}>{item.name}</div>
+                              <div style={{ fontSize:11, color:"#64748b", marginBottom:8 }}>{item.description}</div>
+                            </div>
+                            <div style={{ fontSize:20, fontWeight:900, color:"#10b981", marginLeft:12 }}>${item.price}</div>
+                          </div>
+                          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                            <span style={{ fontSize:10, fontWeight:800, color:item.is_available?"#10b981":"#ef4444", padding:"2px 8px", borderRadius:6, background:item.is_available?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)", border:`1px solid ${item.is_available?"rgba(16,185,129,0.3)":"rgba(239,68,68,0.3)"}` }}>
+                              {item.is_available?"ACTIVE":"HIDDEN"}
+                            </span>
+                            <button onClick={()=>handleMenuEdit(item)} style={{ padding:"4px 12px", borderRadius:8, background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.3)", color:"#3b82f6", fontSize:11, fontWeight:800, cursor:"pointer", marginLeft:"auto" }}>Edit</button>
+                            <button onClick={()=>handleMenuToggle(item.id,item.is_available)} style={{ padding:"4px 12px", borderRadius:8, background:"transparent", border:"1px solid rgba(51,65,85,0.4)", color:"#64748b", fontSize:11, fontWeight:800, cursor:"pointer" }}>
+                              {item.is_available?"Hide":"Show"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {!menuItems.length && (
+              <div style={{ ...S.glass, textAlign:"center", padding:60 }}>
+                <div style={{ fontSize:40, marginBottom:16, opacity:0.3 }}>🍽</div>
+                <p style={{ color:"#475569", fontWeight:700 }}>No menu items yet. Add your first item above.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══ ROOMS TAB ══ */}
+        {activeTab === "rooms" && (
+          <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:40, overflow:"hidden", position:"relative", background:'url("https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?q=80&w=2071") center/cover', minHeight:600 }}>
+            <div style={{ position:"absolute", inset:0, background:"rgba(2,6,23,0.85)", backdropFilter:"blur(12px)" }} />
+            <div style={{ position:"relative", width:"100%", maxWidth:550, textAlign:"center", zIndex:2 }}>
+              <h3 style={{ fontSize:32, fontWeight:900, marginBottom:5, letterSpacing:-1 }}>Asset Inspector</h3>
+              <p style={{ color:"#64748b", fontSize:14, marginBottom:30 }}>Select a suite from the grid or enter ID</p>
+              <input type="text" value={roomSearch} placeholder="ENTER SUITE ID (e.g. 101)"
+                style={{ width:"100%", padding:25, borderRadius:24, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(59,130,246,0.5)", color:"white", textAlign:"center", fontSize:22, fontWeight:900, outline:"none", boxSizing:"border-box" }}
+                onChange={e=>setRoomSearch(e.target.value)} />
+
+              {!searchResult && (
+                <div style={{ marginTop:20, display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center" }}>
+                  {rooms.map(r => (
+                    <button key={r.id} onClick={()=>setRoomSearch(r.id)}
+                      style={{ padding:"6px 14px", borderRadius:10, cursor:"pointer", background:r.color+"15", border:`1px solid ${r.color}44`, color:r.color, fontSize:11, fontWeight:800 }}>
+                      {r.id}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {searchResult && (
+                <div style={{ marginTop:40, padding:45, borderRadius:40, background:"rgba(15,23,42,0.95)", border:`1px solid ${searchResult.color}55`, backdropFilter:"blur(30px)" }}>
+                  <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:20, marginBottom:10 }}>
+                    <h1 style={{ fontSize:84, margin:0, fontWeight:900, letterSpacing:-4 }}>{searchResult.id}</h1>
+                    <div style={{ padding:"6px 15px", background:searchResult.color+"22", border:`1px solid ${searchResult.color}`, color:searchResult.color, borderRadius:10, fontSize:10, fontWeight:900 }}>{searchResult.status}</div>
+                  </div>
+                  {searchResult.status==="OCCUPIED" && (() => {
+                    const guest = bookings.find(b=>b.room_number?.toString()===searchResult.id);
+                    return guest ? <div style={{ margin:"0 0 20px", padding:"12px 20px", borderRadius:12, background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.2)", fontSize:13, color:"#10b981", fontWeight:700 }}>👤 {guest.guest_name}{guest.is_vip?" · VIP":""}</div> : null;
+                  })()}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:15, marginTop:20 }}>
+                    {[["MARK VACANT","VACANT","#3b82f6"],["MARK OCCUPIED","OCCUPIED","#10b981"],["CLEANING REQ.","CLEANING","#f59e0b"],["MAINTENANCE","MAINTENANCE","#ef4444"]].map(([label,status,color])=>(
+                      <button key={status} onClick={()=>updateRoomStatus(searchResult.id,status)} disabled={searchResult.status===status}
+                        style={{ padding:16, background:`${color}${searchResult.status===status?"25":"0d"}`, border:`1px solid ${searchResult.status===status?color:color+"44"}`, borderRadius:16, color:searchResult.status===status?color:"white", cursor:searchResult.status===status?"default":"pointer", fontWeight:800, fontSize:12 }}>
+                        {searchResult.status===status ? `✓ ${label}` : label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {searchResult?.status === "CLEANING" && (
+  <button
+    onClick={() => startCleaning(searchResult.id)}
+    style={{
+      marginTop: 16, width: "100%", padding: "14px 0",
+      borderRadius: 14, background: "rgba(245,158,11,0.15)",
+      border: "1px solid rgba(245,158,11,0.4)",
+      color: "#f59e0b", fontSize: 12, fontWeight: 800,
+      letterSpacing: 1, cursor: "pointer", fontFamily: "inherit",
+    }}>
+    🧹 Open Cleaning Checklist
+  </button>
+)}
+
+        {/* ══ SERVICE REQUESTS ══ */}
+        {activeTab === "requests" && (
+          <div style={S.glass}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:30 }}>
+              <div>
+                <h3 style={{ fontWeight:900, fontSize:24, letterSpacing:-1, margin:0 }}>Service Requests</h3>
+                <p style={{ color:"#64748b", fontSize:13, marginTop:5 }}>{serviceRequests.length} pending</p>
+              </div>
+              <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", color:"#f59e0b", padding:"8px 20px", borderRadius:50, fontSize:11, fontWeight:900, letterSpacing:1 }}>LIVE FEED</div>
+            </div>
+            {serviceRequests.length === 0
+              ? <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}><div style={{ fontSize:40, marginBottom:15, opacity:0.4 }}>✓</div><p style={{ fontSize:14, fontWeight:700 }}>All clear — no pending requests</p></div>
+              : serviceRequests.map(req => (
+                <div key={req.id} style={{ padding:25, borderRadius:20, background:"rgba(245,158,11,0.03)", border:"1px solid rgba(245,158,11,0.15)", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:15 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:6 }}>
+                      <span style={{ background:"rgba(245,158,11,0.15)", color:"#f59e0b", border:"1px solid rgba(245,158,11,0.3)", borderRadius:8, fontSize:10, fontWeight:900, padding:"3px 10px" }}>SUITE {req.room_number||"—"}</span>
+                      {req.request_type && <span style={{ fontSize:11, color:"#94a3b8", fontWeight:700 }}>{req.request_type.toUpperCase()}</span>}
+                      <span style={{ fontSize:10, color:"#475569", marginLeft:"auto" }}>{req.created_at ? new Date(req.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : ""}</span>
+                    </div>
+                    <p style={{ margin:0, fontSize:14, color:"#cbd5e1" }}>{req.notes||req.description||"No details."}</p>
+                  </div>
+                  <button onClick={()=>handleResolveRequest(req.id)} style={{ ...S.btnSuccess, marginLeft:20, padding:"12px 20px", whiteSpace:"nowrap" }}>RESOLVE ✓</button>
+                </div>
+              ))
+            }
+          </div>
+        )}
+         {/* ══ GUEST CHATS ══ */}
+        {activeTab === "chats" && (
+          <div style={S.glass}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:30 }}>
+              <div>
+                <h3 style={{ fontWeight:900, fontSize:24, letterSpacing:-1, margin:0 }}>Guest Chats</h3>
+                <p style={{ color:"#64748b", fontSize:13, marginTop:5 }}>
+                  {openChatRooms.length} active {openChatRooms.length === 1 ? "thread" : "threads"}
+                </p>
+              </div>
+              <div style={{ background:"rgba(16,185,129,0.1)", border:"1px solid rgba(16,185,129,0.3)", color:"#10b981", padding:"8px 20px", borderRadius:50, fontSize:11, fontWeight:900, letterSpacing:1 }}>LIVE</div>
+            </div>
+ 
+            {openChatRooms.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}>
+                <div style={{ fontSize:40, marginBottom:15, opacity:0.4 }}>💬</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>No active chats — all clear</p>
+              </div>
+            ) : (
+              <div style={{ display:"grid", gridTemplateColumns:"320px 1fr", gap:20, minHeight:500 }}>
+                {/* Left column: thread list */}
+                <div style={{ background:"rgba(15,23,42,0.4)", borderRadius:20, border:"1px solid rgba(51,65,85,0.3)", padding:14, overflowY:"auto", maxHeight:600 }}>
+                  {openChatRooms.map(room => {
+                    const threadMessages = chats.filter(c => c.room_number === room);
+                    const lastMessage = threadMessages[threadMessages.length - 1];
+                    const guestName = threadMessages.find(m => m.guest_name)?.guest_name || "Guest";
+                    const isActive = activeChatRoom === room;
+                    const hasUnread = lastMessage?.sender === "guest";
+                    return (
+                      <div key={room}
+                        onClick={() => setActiveChatRoom(room)}
+                        style={{
+                          padding:14, marginBottom:8, borderRadius:14, cursor:"pointer",
+                          background: isActive ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.02)",
+                          border: `1px solid ${isActive ? "rgba(59,130,246,0.4)" : "rgba(51,65,85,0.3)"}`,
+                          transition:"all 0.2s",
+                        }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                          <span style={{ fontSize:11, fontWeight:900, color:"#3b82f6", letterSpacing:1 }}>SUITE {room}</span>
+                          {hasUnread && <span style={{ width:8, height:8, background:"#f59e0b", borderRadius:"50%", animation:"pulse 1.5s ease-in-out infinite" }} />}
+                        </div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"#fff", marginBottom:4 }}>{guestName}</div>
+                        <div style={{ fontSize:11, color:"#64748b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {lastMessage?.sender === "staff" ? "You: " : ""}{lastMessage?.message}
+                        </div>
+                        <div style={{ fontSize:9, color:"#475569", marginTop:6 }}>
+                          {lastMessage?.created_at ? new Date(lastMessage.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : ""}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+ 
+                {/* Right column: conversation */}
+                <div style={{ background:"rgba(15,23,42,0.4)", borderRadius:20, border:"1px solid rgba(51,65,85,0.3)", display:"flex", flexDirection:"column", maxHeight:600 }}>
+                  {!activeChatRoom ? (
+                    <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"#475569", fontSize:13 }}>
+                      Select a thread to view the conversation
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ padding:"18px 22px", borderBottom:"1px solid rgba(51,65,85,0.3)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:900, color:"#3b82f6", letterSpacing:1 }}>SUITE {activeChatRoom}</div>
+                          <div style={{ fontSize:14, fontWeight:700, marginTop:2 }}>
+                            {chats.find(c => c.room_number === activeChatRoom && c.guest_name)?.guest_name || "Guest"}
+                          </div>
+                        </div>
+                        <button onClick={() => closeChatThread(activeChatRoom)} style={{ ...S.btnDanger, padding:"8px 14px" }}>
+                          CLOSE THREAD
+                        </button>
+                      </div>
+ 
+                      <div style={{ flex:1,  padding: isMobile ? '16px' : '40px',
+  paddingTop: isMobile ? '70px' : '40px', overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
+                        {chats.filter(c => c.room_number === activeChatRoom).map(m => (
+                          <div key={m.id} style={{ display:"flex", justifyContent: m.sender === "staff" ? "flex-end" : "flex-start" }}>
+                            <div style={{
+                              maxWidth:"75%", padding:"10px 14px", fontSize:13, lineHeight:1.5,
+                              borderRadius: m.sender === "staff" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                              background: m.sender === "staff" ? "rgba(16,185,129,0.15)" : "rgba(59,130,246,0.12)",
+                              border: `1px solid ${m.sender === "staff" ? "rgba(16,185,129,0.3)" : "rgba(59,130,246,0.25)"}`,
+                            }}>
+                              <div style={{ fontSize:9, fontWeight:800, marginBottom:4, letterSpacing:1, textTransform:"uppercase",
+                                color: m.sender === "staff" ? "#10b981" : "#3b82f6" }}>
+                                {m.sender === "staff" ? "You · Staff" : m.guest_name || "Guest"}
+                              </div>
+                              {m.message}
+                              <div style={{ fontSize:9, color:"#475569", marginTop:4 }}>
+                                {new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+ 
+                      <div style={{ padding:14, borderTop:"1px solid rgba(51,65,85,0.3)", display:"flex", gap:10 }}>
+                        <input
+                          value={chatReplyInput}
+                          onChange={e => setChatReplyInput(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && sendChatReply()}
+                          placeholder="Type your reply to the guest..."
+                          style={{ ...S.input, flex:1 }}
+                        />
+                        <button onClick={sendChatReply} style={{ ...S.btnPrimary, padding:"10px 20px" }}>
+                          SEND
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+ 
+        {/* ══ CALL REQUESTS ══ */}
+        {activeTab === "calls" && (
+          <div style={S.glass}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:30 }}>
+              <div>
+                <h3 style={{ fontWeight:900, fontSize:24, letterSpacing:-1, margin:0 }}>Call Requests</h3>
+                <p style={{ color:"#64748b", fontSize:13, marginTop:5 }}>{callRequests.length} pending</p>
+              </div>
+              <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", color:"#f59e0b", padding:"8px 20px", borderRadius:50, fontSize:11, fontWeight:900, letterSpacing:1 }}>LIVE</div>
+            </div>
+ 
+            {callRequests.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}>
+                <div style={{ fontSize:40, marginBottom:15, opacity:0.4 }}>📞</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>No call-back requests</p>
+              </div>
+            ) : callRequests.map(req => (
+              <div key={req.id} style={{
+                padding:25, borderRadius:20, marginBottom:15,
+                background:"rgba(245,158,11,0.04)",
+                border:"1px solid rgba(245,158,11,0.2)",
+                display:"flex", justifyContent:"space-between", alignItems:"center",
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                    <span style={{ background:"rgba(245,158,11,0.15)", color:"#f59e0b", border:"1px solid rgba(245,158,11,0.3)", borderRadius:8, fontSize:10, fontWeight:900, padding:"3px 10px" }}>
+                      SUITE {req.room_number}
+                    </span>
+                    <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>{req.guest_name}</span>
+                    <span style={{ fontSize:10, color:"#475569", marginLeft:"auto" }}>
+                      {req.created_at ? new Date(req.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : ""}
+                    </span>
+                  </div>
+                  <p style={{ margin:"0 0 6px", fontSize:13, color:"#cbd5e1" }}>{req.reason || "Guest requested a call back"}</p>
+                  {req.phone && (
+                    <a href={`tel:${req.phone.replace(/\s/g, "")}`}
+                      style={{ display:"inline-block", marginTop:6, padding:"6px 14px", borderRadius:10,
+                        background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.3)",
+                        color:"#3b82f6", fontSize:12, fontWeight:800, textDecoration:"none" }}>
+                      📞 {req.phone}
+                    </a>
+                  )}
+                  
+                </div>
+                <button onClick={() => markCallResolved(req.id, req.room_number)}
+                  style={{ ...S.btnSuccess, marginLeft:20, padding:"12px 20px", whiteSpace:"nowrap" }}>
+                  ✓ MARK CALLED
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* ══ HOUSEKEEPING ══ */}
+        {activeTab === "housekeeping" && (
+          <div style={S.glass}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:30 }}>
+              <div>
+                <h3 style={{ fontWeight:900, fontSize:24, letterSpacing:-1, margin:0 }}>Housekeeping</h3>
+                <p style={{ color:"#64748b", fontSize:13, marginTop:5 }}>
+                  {rooms.filter(r=>r.status==="CLEANING").length} room{rooms.filter(r=>r.status==="CLEANING").length!==1?"s":""} need attention
+                </p>
+              </div>
+              <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", color:"#f59e0b", padding:"8px 20px", borderRadius:50, fontSize:11, fontWeight:900, letterSpacing:1 }}>
+                {rooms.filter(r=>r.status==="CLEANING").length} CLEANING
+              </div>
+            </div>
+ 
+            {/* Shift Handover Notes */}
+            <div style={{ background:"rgba(59,130,246,0.05)", border:"1px solid rgba(59,130,246,0.15)", borderRadius:20, padding:24, marginBottom:28 }}>
+              <div style={{ fontSize:10, color:"#3b82f6", fontWeight:800, letterSpacing:2, marginBottom:14 }}>SHIFT HANDOVER NOTES</div>
+              <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+                <input
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && saveShiftNote()}
+                  placeholder="Write a note for the next shift... (e.g. 'Suite 5 wants late checkout')"
+                  style={{ flex:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(59,130,246,0.2)", borderRadius:10, padding:"10px 14px", color:"#f1f5f9", fontSize:13, fontFamily:"inherit", outline:"none" }}
+                />
+                <button onClick={saveShiftNote} disabled={savingNote}
+                  style={{ padding:"10px 20px", borderRadius:10, background:"#3b82f6", border:"none", color:"#fff", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"inherit", opacity:savingNote?0.6:1 }}>
+                  {savingNote ? "Saving..." : "SAVE NOTE"}
+                </button>
+              </div>
+              {shiftNotes.length === 0 ? (
+                <div style={{ color:"#475569", fontSize:13, textAlign:"center", padding:"10px 0" }}>No handover notes yet.</div>
+              ) : shiftNotes.map(n => (
+                <div key={n.id} style={{ padding:"12px 16px", borderRadius:12, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(51,65,85,0.3)", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                  <div>
+                    <div style={{ fontSize:11, color:"#3b82f6", fontWeight:700, marginBottom:4 }}>{n.staff_name} · {new Date(n.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                    <div style={{ fontSize:13, color:"#cbd5e1", lineHeight:1.5 }}>{n.note}</div>
+                  </div>
+                  <div style={{ fontSize:10, color:"#475569", whiteSpace:"nowrap", marginLeft:16 }}>{new Date(n.created_at).toLocaleDateString()}</div>
+                </div>
+              ))}
+            </div>
+ 
+            {/* Cleaning rooms grid */}
+            {rooms.filter(r=>r.status==="CLEANING").length === 0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}>
+                <div style={{ fontSize:40, marginBottom:14, opacity:0.4 }}>✨</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>All rooms are clean — great work team!</p>
+              </div>
+            ) : (
+             <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16 }}>
+                {rooms.filter(r=>r.status==="CLEANING").map(r => {
+                  const roomNum  = r.room_number || r.id;
+                  const tasks    = hkTasks[roomNum] || [];
+                  const done     = tasks.filter(t => t.completed).length;
+                  const total    = tasks.length;
+                  const pct      = total > 0 ? Math.round((done/total)*100) : 0;
+                  return (
+                    <div key={roomNum} style={{ background:"rgba(245,158,11,0.04)", border:"1px solid rgba(245,158,11,0.25)", borderRadius:20, padding:22 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                        <div>
+                          <div style={{ fontSize:10, color:"#f59e0b", fontWeight:800, letterSpacing:1 }}>SUITE {roomNum}</div>
+                          <div style={{ fontSize:16, fontWeight:700, color:"#fff", marginTop:2 }}>Cleaning in Progress</div>
+                        </div>
+                        <div style={{ fontSize:22, fontWeight:900, color: pct===100?"#10b981":"#f59e0b" }}>{pct}%</div>
+                      </div>
+                      {total > 0 && (
+                        <div style={{ height:4, background:"rgba(255,255,255,0.08)", borderRadius:2, marginBottom:14 }}>
+                          <div style={{ height:"100%", width:`${pct}%`, background:pct===100?"#10b981":"#f59e0b", borderRadius:2, transition:"width 0.4s" }} />
+                        </div>
+                      )}
+                      {total > 0 && (
+                        <div style={{ marginBottom:14, fontSize:12, color:"#94a3b8" }}>{done} of {total} tasks done</div>
+                      )}
+                      <button onClick={() => startCleaning(roomNum)}
+                        style={{ width:"100%", padding:"10px 0", borderRadius:12, background:"rgba(245,158,11,0.15)", border:"1px solid rgba(245,158,11,0.4)", color:"#f59e0b", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                        🧹 {total === 0 ? "Start Cleaning" : "View Checklist"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+ 
+        {/* ══ DAILY REPORTS ══ (admin only) */}
+        {activeTab === "reports" && isAdmin && (
+          <div style={S.glass}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:30, flexWrap:"wrap", gap:16 }}>
+              <div>
+                <h3 style={{ fontWeight:900, fontSize:24, letterSpacing:-1, margin:0 }}>Daily Report</h3>
+                <p style={{ color:"#64748b", fontSize:13, marginTop:5 }}>Auto-generated from live data</p>
+              </div>
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                <input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)}
+                  style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(51,65,85,0.4)", borderRadius:10, padding:"8px 14px", color:"#f1f5f9", fontSize:13, fontFamily:"inherit", outline:"none" }} />
+                <button onClick={() => generateReport(reportDate)}
+                  style={{ padding:"9px 20px", borderRadius:10, background:"#3b82f6", border:"none", color:"#fff", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                  GENERATE
+                </button>
+                {reportData && (
+                  <button onClick={copyReport}
+                    style={{ padding:"9px 20px", borderRadius:10, background:"rgba(16,185,129,0.1)", border:"1px solid rgba(16,185,129,0.3)", color:"#10b981", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+                    📋 COPY
+                  </button>
+                )}
+              </div>
+            </div>
+ 
+            {reportLoading && (
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}>
+                <div style={{ fontSize:13, fontWeight:600 }}>Generating report...</div>
+              </div>
+            )}
+ 
+            {!reportLoading && !reportData && (
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#475569" }}>
+                <div style={{ fontSize:40, marginBottom:14, opacity:0.4 }}>📊</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>Pick a date and click Generate</p>
+              </div>
+            )}
+ 
+            {!reportLoading && reportData && (
+              <>
+                <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16, marginBottom:24 }}>
+                  {[
+                    { label:"Occupancy",       val:`${reportData.occupied}/${reportData.totalRooms} (${reportData.occupancyPct}%)`, color:"#3b82f6" },
+                    { label:"Check-ins",        val:reportData.checkIns.length,    color:"#10b981" },
+                    { label:"Check-outs",       val:reportData.checkOuts.length,   color:"#94a3b8" },
+                    { label:"Orders Today",     val:reportData.orders.length,      color:"#f59e0b" },
+                    { label:"F&B Revenue",      val:`₵${reportData.orderRevenue.toLocaleString()}`, color:"#10b981" },
+                    { label:"Booking Revenue",  val:`₵${reportData.bookingRevenue.toLocaleString()}`, color:"#10b981" },
+                    { label:"Requests Pending", val:reportData.requestsPending,    color:"#ef4444" },
+                    { label:"Requests Resolved",val:reportData.requestsResolved,   color:"#10b981" },
+                    { label:"Guest Chats",      val:reportData.chats.length,       color:"#3b82f6" },
+                  ].map(s => (
+                    <div key={s.label} style={{ background:"rgba(15,23,42,0.6)", border:"1px solid rgba(51,65,85,0.3)", borderRadius:16, padding:20, textAlign:"center" }}>
+                      <div style={{ fontSize:10, color:"#64748b", fontWeight:700, letterSpacing:1.5, marginBottom:8 }}>{s.label.toUpperCase()}</div>
+                      <div style={{ fontSize:28, fontWeight:900, color:s.color }}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+ 
+                {reportData.checkIns.length > 0 && (
+                  <div style={{ background:"rgba(15,23,42,0.4)", border:"1px solid rgba(51,65,85,0.3)", borderRadius:16, padding:20, marginBottom:16 }}>
+                    <div style={{ fontSize:10, color:"#3b82f6", fontWeight:800, letterSpacing:2, marginBottom:14 }}>TODAY'S CHECK-INS</div>
+                    {reportData.checkIns.map(b => (
+                      <div key={b.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:"1px solid rgba(51,65,85,0.2)", fontSize:13 }}>
+                        <span style={{ color:"#fff", fontWeight:600 }}>{b.guest_name}</span>
+                        <span style={{ color:"#3b82f6" }}>Suite {b.room_number}</span>
+                        <span style={{ color:"#10b981" }}>₵{Number(b.total_amount||0).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+ 
+                {reportData.checkOuts.length > 0 && (
+                  <div style={{ background:"rgba(15,23,42,0.4)", border:"1px solid rgba(51,65,85,0.3)", borderRadius:16, padding:20 }}>
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:800, letterSpacing:2, marginBottom:14 }}>TODAY'S CHECK-OUTS</div>
+                    {reportData.checkOuts.map(b => (
+                      <div key={b.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:"1px solid rgba(51,65,85,0.2)", fontSize:13 }}>
+                        <span style={{ color:"#fff", fontWeight:600 }}>{b.guest_name}</span>
+                        <span style={{ color:"#94a3b8" }}>Suite {b.room_number}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+ 
+ 
+        {/* ══ RESERVATIONS CALENDAR ══ */}
+        {activeTab === "reservations" && (
+          <div style={S.glass}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30, flexWrap: "wrap", gap: 16 }}>
+              <div>
+                <h3 style={{ fontWeight: 900, fontSize: 24, letterSpacing: -1, margin: 0 }}>Reservations</h3>
+                <p style={{ color: "#64748b", fontSize: 13, marginTop: 5 }}>
+                  {monthStats.count} bookings this month · ₵{monthStats.revenue.toLocaleString()} revenue
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button onClick={goPrevMonth}
+                  style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(51,65,85,0.4)", color: "#cbd5e1", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "inherit" }}>
+                  ‹
+                </button>
+                <div style={{ minWidth: 200, textAlign: "center", fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 1 }}>
+                  {monthLabel}
+                </div>
+                <button onClick={goNextMonth}
+                  style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(51,65,85,0.4)", color: "#cbd5e1", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "inherit" }}>
+                  ›
+                </button>
+                <button onClick={goToday}
+                  style={{ padding: "9px 18px", borderRadius: 10, background: "rgba(59,130,246,0.1)",
+                    border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", cursor: "pointer",
+                    fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "inherit" }}>
+                  Today
+                </button>
+              </div>
+            </div>
+ 
+            <div style={{ display: "grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 24, alignItems: "flex-start" }}>
+              {/* CALENDAR GRID */}
+              <div style={{ background: "rgba(15,23,42,0.4)", borderRadius: 20, border: "1px solid rgba(51,65,85,0.3)", padding: 18 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+                  {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+                    <div key={d} style={{ textAlign: "center", padding: "8px 0",
+                      fontSize: 10, fontWeight: 800, color: "#64748b", letterSpacing: 1.5 }}>
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                  {calCells.map((day, idx) => {
+                    if (!day) return <div key={idx} style={{ height: 84 }} />;
+                    const dayBookings = bookingsByDay(day);
+                    const count = dayBookings.length;
+                    const dayISO = new Date(calYear, calMon, day, 12).toISOString().split("T")[0];
+                    const isToday = dayISO === todayISO;
+                    const isSelected = calSelectedDay === day;
+                    const occupancyPct = count / 10; // 10 rooms total
+                    return (
+                      <div key={idx}
+                        onClick={() => setCalSelectedDay(day)}
+                        style={{
+                          height: 84, padding: 8, borderRadius: 12, cursor: "pointer",
+                          background: isSelected ? "rgba(59,130,246,0.18)" :
+                                      count > 0  ? "rgba(59,130,246,0.06)" :
+                                                   "rgba(255,255,255,0.02)",
+                          border: `1px solid ${isSelected ? "rgba(59,130,246,0.5)" :
+                                                isToday    ? "rgba(245,158,11,0.5)" :
+                                                             "rgba(51,65,85,0.3)"}`,
+                          transition: "all 0.2s",
+                          display: "flex", flexDirection: "column", justifyContent: "space-between",
+                          position: "relative", overflow: "hidden",
+                        }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <span style={{
+                            fontSize: 13, fontWeight: isToday ? 900 : 600,
+                            color: isToday ? "#f59e0b" : "#fff",
+                          }}>{day}</span>
+                          {count > 0 && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 800, color: "#3b82f6",
+                              background: "rgba(59,130,246,0.15)", borderRadius: 12,
+                              padding: "2px 7px", letterSpacing: 0.5,
+                            }}>{count}</span>
+                          )}
+                        </div>
+                        {count > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            {dayBookings.slice(0, 2).map(b => (
+                              <div key={b.id} style={{
+                                fontSize: 9, color: "#94a3b8",
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              }}>
+                                #{b.room_number} · {b.guest_name?.split(" ")[0]}
+                              </div>
+                            ))}
+                            {count > 2 && (
+                              <div style={{ fontSize: 9, color: "#3b82f6", fontWeight: 700 }}>
+                                +{count - 2} more
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {count > 0 && (
+                          <div style={{
+                            position: "absolute", bottom: 0, left: 0, right: 0, height: 2,
+                            background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
+                            transform: `scaleX(${Math.min(occupancyPct, 1)})`, transformOrigin: "left",
+                          }} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+ 
+              {/* DAY DETAIL PANEL */}
+              <div style={{ background: "rgba(15,23,42,0.4)", borderRadius: 20,
+                border: "1px solid rgba(51,65,85,0.3)", padding: 22, minHeight: 400 }}>
+                {!calSelectedDay ? (
+                  <div style={{ textAlign: "center", padding: "60px 0", color: "#475569" }}>
+                    <div style={{ fontSize: 32, marginBottom: 14, opacity: 0.4 }}>📅</div>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>Click any day to see its bookings</p>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, color: "#3b82f6", fontWeight: 800, letterSpacing: 2, marginBottom: 4 }}>
+                        SELECTED DAY
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>
+                        {new Date(calYear, calMon, calSelectedDay).toLocaleDateString("en-GB", {
+                          weekday: "long", day: "numeric", month: "long",
+                        })}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                        {selectedDayBookings.length} {selectedDayBookings.length === 1 ? "guest" : "guests"} in residence
+                      </div>
+                    </div>
+ 
+                    {selectedDayBookings.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "30px 0", color: "#475569", fontSize: 13 }}>
+                        No bookings on this day.
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 380, overflowY: "auto" }}>
+                        {selectedDayBookings.map(b => (
+                          <div key={b.id} style={{
+                            padding: 14, borderRadius: 12,
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(51,65,85,0.3)",
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, color: "#3b82f6", letterSpacing: 1 }}>
+                                SUITE {b.room_number}
+                              </span>
+                              {b.is_vip && (
+                                <span style={{ fontSize: 9, color: "#f59e0b", fontWeight: 700, letterSpacing: 1 }}>★ VIP</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                              {b.guest_name}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>
+                              {b.check_in_date} → {b.check_out_date} · {b.nights || "?"} nights
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: 10, color: "#64748b" }}>
+                                {b.guest_count || 1} {b.guest_count === 1 ? "guest" : "guests"}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>
+                                ₵{Number(b.total_amount || 0).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )} 
+ 
+
+
+        {/* ══ SETTINGS ══ (admin only) */}
+        {activeTab === "settings" && isAdmin && (
+          <div style={S.glass}>
+            <h3 style={{ fontWeight:900, fontSize:24 }}>System Configuration</h3>
+            <p style={{ color:"#64748b", fontSize:14 }}>Secure Node: <span style={{ color:"#3b82f6" }}>STAYPILOT-HQ-ALPHA</span></p>
+            <div style={{ marginTop:30, padding:30, borderRadius:20, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(51,65,85,0.3)" }}>
+              <p style={{ margin:0, fontSize:13, color:"#94a3b8" }}>Read-only mode. Database migrations managed via Core Command terminal.</p>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ── GUEST SLIDE-OVER (admin only) ── */}
       {isAdmin && (
-        <div style={{
-          position:"fixed",
-          right: selectedGuest ? 0 : "-100%",
-          top: 0,
-          width: isMobile ? "100%" : 420,
-          height:"100vh",
-          background:"rgba(15,23,42,0.95)",
-          borderLeft:"1px solid rgba(59,130,246,0.2)",
-          boxShadow:"-20px 0 60px rgba(0,0,0,0.8)",
-          zIndex:100,
-          transition:"0.5s cubic-bezier(0.19,1,0.22,1)",
-          padding:isMobile ? "20px" : "60px 40px",
-          display:"flex",
-          flexDirection:"column",
-          backdropFilter:"blur(30px)",
-          overflowY:"auto"
-        }}>
+        <div style={{ position:"fixed", right:selectedGuest?"0":"-450px", top:0, width:420, height:"100vh", background:"rgba(15,23,42,0.95)", borderLeft:"1px solid rgba(59,130,246,0.2)", boxShadow:"-20px 0 60px rgba(0,0,0,0.8)", zIndex:100, transition:"0.5s cubic-bezier(0.19,1,0.22,1)", padding:"60px 40px", display:"flex", flexDirection:"column", backdropFilter:"blur(30px)", overflowY:"auto" }}>
           {selectedGuest && (
             <>
-              {/* Your guest slide content */}
+              <button onClick={()=>setSelectedGuest(null)} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(51,65,85,0.5)", padding:"10px 20px", borderRadius:12, color:"#64748b", cursor:"pointer", marginBottom:40, fontWeight:800, fontSize:11, width:"fit-content" }}>← CLOSE PROFILE</button>
+              <div style={{ marginBottom:30 }}>
+                <div style={{ display:"flex", alignItems:"center", marginBottom:10 }}>
+                  <h2 style={{ margin:0, fontSize:34, fontWeight:900, letterSpacing:-2 }}>{selectedGuest.guest_name}</h2>
+                  {selectedGuest.is_vip && <span style={{ background:"linear-gradient(45deg,#f59e0b,#fbbf24)", color:"#000", padding:"3px 8px", borderRadius:6, fontSize:9, fontWeight:900, marginLeft:12 }}>VIP</span>}
+                </div>
+                <p style={{ color:"#3b82f6", fontWeight:800, fontSize:15, letterSpacing:1 }}>SUITE {selectedGuest.room_number}</p>
+              </div>
+
+              <div style={{ background:"linear-gradient(135deg,rgba(59,130,246,0.1),transparent)", padding:30, borderRadius:24, border:"1px solid rgba(59,130,246,0.3)", marginBottom:30 }}>
+                <small style={{ color:"#64748b", fontWeight:800, letterSpacing:2, fontSize:10 }}>DIGITAL ACCESS PASS</small>
+                <p style={{ fontSize:28, letterSpacing:8, margin:"12px 0 0", color:"#10b981", fontWeight:900 }}>{selectedGuest.access_token||"UNASSIGNED"}</p>
+              </div>
+
+              {(() => {
+                const guestOrders = orders.filter(o => o.room_number?.toString()===selectedGuest.room_number?.toString() && !["cancelled"].includes(o.status));
+                return guestOrders.length > 0 && (
+                  <div style={{ marginBottom:30 }}>
+                    <small style={{ color:"#64748b", fontWeight:800, letterSpacing:2, fontSize:10, display:"block", marginBottom:12 }}>ACTIVE ORDERS</small>
+                    {guestOrders.map(o=>(
+                      <div key={o.id} style={{ padding:"14px 16px", borderRadius:14, background:"rgba(245,158,11,0.05)", border:"1px solid rgba(245,158,11,0.2)", marginBottom:8, fontSize:13 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between" }}>
+                          <span style={{ fontWeight:700 }}>Order #{o.id}</span>
+                          <StatusBadge status={o.status} />
+                        </div>
+                        <div style={{ color:"#94a3b8", fontSize:11, marginTop:4 }}>{Array.isArray(o.items)?o.items.map(i=>`${i.qty}× ${i.name}`).join(", "):""}</div>
+                        <div style={{ color:"#10b981", fontWeight:900, marginTop:4 }}>${o.total_amount?.toFixed(2)} · <span style={{ color:o.payment_status==="paid"?"#10b981":"#f59e0b", fontWeight:700 }}>{o.payment_status}</span></div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div style={{ flex:1 }}>
+                <small style={{ color:"#64748b", fontWeight:800, letterSpacing:2, fontSize:10 }}>PATRON BRIEFING</small>
+                <div style={{ color:"#94a3b8", fontSize:14, lineHeight:1.8, marginTop:15, padding:25, background:"rgba(255,255,255,0.02)", borderRadius:20, border:"1px solid rgba(51,65,85,0.3)" }}>
+                  {selectedGuest.guest_notes || "No special requests registered."}
+                </div>
+              </div>
+
+              <button onClick={()=>setConfirmDialog({ title:"Authorize Check-Out", message:`Check-out ${selectedGuest.guest_name} from Suite ${selectedGuest.room_number}?`, onConfirm:()=>handleCheckOut(selectedGuest.id,selectedGuest.room_number) })}
+                style={{ width:"100%", padding:22, background:"linear-gradient(45deg,#ef4444,#dc2626)", color:"white", border:"none", borderRadius:20, fontWeight:900, cursor:"pointer", boxShadow:"0 15px 30px rgba(239,68,68,0.3)", fontSize:14, letterSpacing:1, marginTop:30 }}>
+                AUTHORIZE CHECK-OUT
+              </button>
             </>
           )}
         </div>
