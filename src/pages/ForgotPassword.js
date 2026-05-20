@@ -13,7 +13,7 @@ export default function ForgotPassword() {
     if (!email.trim()) { setError("Please enter your email address."); return; }
     setLoading(true); setError("");
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://the-afia-lah1m4rmt-naomiopuni19s-projects.vercel.app/reset-password",
+      redirectTo: "https://naomiopuni19.github.io/the-afia/#/reset-password",
     });
     setLoading(false);
     if (err) { setError(err.message); return; }
