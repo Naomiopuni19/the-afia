@@ -1,4 +1,4 @@
-import "../styles/Dashboard.css";
+import { useIsMobile, useDashboardStyles } from "../hooks/useDashboardStyles";
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -134,7 +134,7 @@ const Dashboard = () => {
   const [callRequests,   setCallRequests]   = useState([]);
   const [callsBlink,     setCallsBlink]     = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isMobile = useWindowWidth() < 768;
+const isMobile = useIsMobile();
   const [hkTasks,        setHkTasks]        = useState({});   // { roomNumber: [tasks] }
   const [hkModal,        setHkModal]        = useState(null); // room_number being cleaned
   const [shiftNotes,     setShiftNotes]     = useState([]);
@@ -697,35 +697,7 @@ GUEST COMMUNICATIONS
   const searchResult = rooms.find(r => r.id === roomSearch);
 
   // ── STYLES ───────────────────────────────────────────────────────────────────
-  const S = {
-    page: { background:"radial-gradient(circle at top right,#0f172a,#020617)", minHeight:"100vh", color:"white", display:"flex", fontFamily:"'Plus Jakarta Sans','Inter',sans-serif", overflowX:"hidden" },
-    sidebar: { width:280, background:"rgba(15,23,42,0.8)", padding:"40px 20px", borderRight:"1px solid rgba(51,65,85,0.5)", display:"flex", flexDirection:"column", justifyContent:"space-between", zIndex:10, position:"fixed", height:"100vh", backdropFilter:"blur(20px)", overflowY:"auto" },
-    main: { flex:1, marginLeft:280, padding:"40px 60px", display:"flex", flexDirection:"column", gap:30, overflowY:"auto" },
-    navBtn: (active, blink) => ({ width:"100%", padding:"14px 20px", marginBottom:10, borderRadius:16, border: active ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent", background: active ? "linear-gradient(90deg,rgba(59,130,246,0.15),transparent)" : "transparent", color: active ? "#3b82f6" : "#64748b", fontSize:14, fontWeight:700, cursor:"pointer", transition:"all 0.3s", textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center", ...(blink ? { animation:"navBlink 0.8s ease-in-out infinite" } : {}) }),
-    statCard: { background:"linear-gradient(135deg,rgba(30,41,59,0.4),rgba(15,23,42,0.4))", padding:25, borderRadius:28, border:"1px solid rgba(51,65,85,0.3)", backdropFilter:"blur(10px)", cursor:"default" },
-    glass: { background:"rgba(15,23,42,0.3)", borderRadius:32, border:"1px solid rgba(51,65,85,0.3)", padding:30, backdropFilter:"blur(40px)", boxShadow:"0 20px 40px rgba(0,0,0,0.2)" },
-    input: { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(51,65,85,0.5)", borderRadius:12, padding:"12px 16px", color:"white", fontSize:13, fontWeight:600, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" },
-    label: { fontSize:10, fontWeight:800, letterSpacing:"1.5px", color:"#64748b", marginBottom:6, display:"block" },
-    btnPrimary: { padding:"12px 24px", background:"linear-gradient(90deg,#3b82f6,#2563eb)", border:"none", borderRadius:12, color:"white", fontWeight:900, fontSize:13, cursor:"pointer" },
-    btnDanger:  { padding:"8px 16px", background:"rgba(239,68,68,0.05)", border:"1px solid rgba(239,68,68,0.3)", color:"#ef4444", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
-    btnSuccess: { padding:"8px 16px", background:"rgba(16,185,129,0.05)", border:"1px solid rgba(16,185,129,0.3)", color:"#10b981", borderRadius:10, cursor:"pointer", fontSize:10, fontWeight:900 },
-   chip: (active, color="#3b82f6") => ({
-  padding:"6px 16px", borderRadius:20,
-  border:`1px solid ${active ? color : "rgba(51,65,85,0.4)"}`,
-  background: active ? color+"22" : "transparent",
-  color: active ? color : "#64748b",
-  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit"
-}),
-mobileHamburger: {
-  position: 'fixed', top: 16, left: 16, zIndex: 600,
-  width: 42, height: 42, borderRadius: 12,
-  background: 'rgba(15,23,42,0.95)',
-  border: '1px solid rgba(59,130,246,0.25)',
-  display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center',
-  gap: 5, cursor: 'pointer', backdropFilter: 'blur(12px)',
-},
-  };
+  const S = useDashboardStyles(isMobile);
 
   if (isLoading) return (
     <div style={{ ...S.page, alignItems:"center", justifyContent:"center" }}>
@@ -973,7 +945,7 @@ mobileHamburger: {
         {/* ══ ANALYTICS ══ (admin only) */}
         {activeTab === "analytics" && isAdmin && (
           <>
-            <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap:20 }}>
+            <div style={{ ...S.analyticsStats }}>
               {[
                 { label:"DAILY ORDERS", value:activeOrders.length, color:"#f59e0b" },
                 { label:"OCCUPANCY",    value:`${occupancyRate}%`,  color:"#3b82f6" },
@@ -1119,7 +1091,7 @@ mobileHamburger: {
               </div>
             </div>
 
-           <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4,1fr)", gap:14}}>
+           <div style={{  ...S.kitchenGrid }}>
              {["pending","accepted","preparing","ready"].map(stage => {
                 const stageOrders = displayedOrders.filter(o => o.status === stage);
                 return (
@@ -1231,7 +1203,7 @@ mobileHamburger: {
               <p style={{ color:"#64748b", margin:"4px 0 0", fontSize:13 }}>View outstanding balances and process payments</p>
             </div>
 
-            <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:20, marginBottom:20 }}>
+            <div style={{  ...S.billingStats }}>
               {[
                 { label:"TOTAL UNPAID", value:`$${orders.filter(o=>o.payment_status==="unpaid"&&["delivered","completed"].includes(o.status)).reduce((s,o)=>s+(o.total_amount||0),0).toFixed(2)}`, color:"#ef4444" },
                 { label:"TOTAL PAID",   value:`$${totalRevenue.toFixed(2)}`, color:"#10b981" },
@@ -1541,7 +1513,7 @@ mobileHamburger: {
                 <p style={{ fontSize:14, fontWeight:700 }}>No active chats — all clear</p>
               </div>
             ) : (
-              <div style={{ display:"grid", gridTemplateColumns:"320px 1fr", gap:20, minHeight:500 }}>
+              <div style={{ ...S.chatsGrid}}>
                 {/* Left column: thread list */}
                 <div style={{ background:"rgba(15,23,42,0.4)", borderRadius:20, border:"1px solid rgba(51,65,85,0.3)", padding:14, overflowY:"auto", maxHeight:600 }}>
                   {openChatRooms.map(room => {
@@ -1741,7 +1713,7 @@ mobileHamburger: {
                 <p style={{ fontSize:14, fontWeight:700 }}>All rooms are clean — great work team!</p>
               </div>
             ) : (
-             <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16 }}>
+             <div style={{  ...S.hkGrid }}>
                 {rooms.filter(r=>r.status==="CLEANING").map(r => {
                   const roomNum  = r.room_number || r.id;
                   const tasks    = hkTasks[roomNum] || [];
@@ -1816,7 +1788,7 @@ mobileHamburger: {
  
             {!reportLoading && reportData && (
               <>
-                <div style={{ display:"grid",  gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap:16, marginBottom:24 }}>
+                <div style={{  ...S.reportsStats }}>
                   {[
                     { label:"Occupancy",       val:`${reportData.occupied}/${reportData.totalRooms} (${reportData.occupancyPct}%)`, color:"#3b82f6" },
                     { label:"Check-ins",        val:reportData.checkIns.length,    color:"#10b981" },
@@ -1900,7 +1872,7 @@ mobileHamburger: {
               </div>
             </div>
  
-            <div style={{ display: "grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 360px", gap: 24, alignItems: "flex-start" }}>
+            <div style={{ ...S.calendarGrid }}>
               {/* CALENDAR GRID */}
               <div style={{ background: "rgba(15,23,42,0.4)", borderRadius: 20, border: "1px solid rgba(51,65,85,0.3)", padding: 18 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
