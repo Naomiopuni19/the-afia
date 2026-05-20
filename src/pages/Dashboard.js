@@ -794,7 +794,7 @@ GUEST COMMUNICATIONS
             onClick={e => e.stopPropagation()}>
             <button onClick={() => setHkModal(null)} style={{ position:"absolute", top:16, right:16, width:30, height:30, borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>
             <div style={{ fontSize:10, color:"#f59e0b", fontWeight:800, letterSpacing:2, marginBottom:6 }}>SUITE {hkModal}</div>
-            <h3 style={{ fontSize:22, fontWeight:900, color:"#fff", margin:"0 0 6px" }}>Cleaning Checklist</h3>
+           <h3 style={{ fontSize: isMobile?20:32, margin:"6px 0 0", fontWeight:900, color }}>{value}</h3>
             {(() => {
               const tasks = hkTasks[hkModal] || [];
               const done  = tasks.filter(t => t.completed).length;
@@ -932,14 +932,13 @@ GUEST COMMUNICATIONS
       <main style={S.main}>
         <header style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
           <div>
-            <h2 style={{ fontSize:36, fontWeight:900, margin:0, letterSpacing:-1 }}>{isAdmin ? "Elite Intelligence" : "Operations View"}</h2>
+            <h2 style={{ fontSize: isMobile?20:36, fontWeight:900, margin:0, letterSpacing:-1, lineHeight:1.1 }}>{isAdmin ? "Elite Intelligence" : "Operations View"}</h2>
             <p style={{ color:"#64748b", margin:"5px 0 0", fontSize:14, fontWeight:600 }}>
               {isAdmin ? "Admin Root Access" : `Staff View · ${userName}`} · <span style={{ color:"#3b82f6" }}>{currentTime}</span>
             </p>
           </div>
-          <div style={{ color:"#10b981", background:"rgba(16,185,129,0.1)", padding:"8px 24px", borderRadius:50, fontSize:11, fontWeight:900, border:"1px solid rgba(16,185,129,0.2)", letterSpacing:1 }}>
-            ENCRYPTED UPLINK
-          </div>
+          {!isMobile && <div style={{ color:"#10b981", background:"rgba(16,185,129,0.1)", padding:"8px 24px", borderRadius:50, fontSize:11, fontWeight:900, border:"1px solid rgba(16,185,129,0.2)", letterSpacing:1 }}>ENCRYPTED UPLINK</div>}
+           
         </header>
 
         {/* ══ ANALYTICS ══ (admin only) */}
@@ -961,13 +960,13 @@ GUEST COMMUNICATIONS
 
             <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1.2fr", gap:30 }}>
               <div style={S.glass}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:25 }}>
-                  <h4 style={{ margin:0, fontWeight:900, fontSize:16 }}>Guest Manifest</h4>
-                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <input type="text" value={guestFilter} onChange={e=>setGuestFilter(e.target.value)} placeholder="Filter guests..." style={{ ...S.input, width:200 }} />
-                    <span style={{ fontSize:10, color:"#475569", fontWeight:800, whiteSpace:"nowrap" }}>{filteredBookings.length} RECORDS</span>
-                  </div>
-                </div>
+               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:25, flexWrap:"wrap", gap:10 }}>
+  <h4 style={{ margin:0, fontWeight:900, fontSize:16 }}>Guest Manifest</h4>
+  <div style={{ display:"flex", alignItems:"center", gap:12, width: isMobile?"100%":"auto" }}>
+    <input type="text" value={guestFilter} onChange={e=>setGuestFilter(e.target.value)} placeholder="Filter guests..." style={{ ...S.input, width: isMobile?"100%":200 }} />
+    <span style={{ fontSize:10, color:"#475569", fontWeight:800, whiteSpace:"nowrap" }}>{filteredBookings.length} RECORDS</span>
+  </div>
+</div>
                 <div style={{ maxHeight:400, overflowY:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
@@ -1562,7 +1561,7 @@ GUEST COMMUNICATIONS
                             {chats.find(c => c.room_number === activeChatRoom && c.guest_name)?.guest_name || "Guest"}
                           </div>
                         </div>
-                        <button onClick={() => closeChatThread(activeChatRoom)} style={{ ...S.btnDanger, padding:"8px 14px" }}>
+                        <button onClick={() => closeChatThread(activeChatRoom)}style={{ ...S.btnDanger, whiteSpace:"nowrap", fontSize: isMobile?9:10 }}>
                           CLOSE THREAD
                         </button>
                       </div>
