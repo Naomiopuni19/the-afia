@@ -1,10 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  THE AFIA — Boutique Luxury Landing Page
-//  Built to match the blue-black tech-forward aesthetic of the rest of the app
-// ═══════════════════════════════════════════════════════════════════════════
 
 const C = {
   accent: '#3b82f6', accent2: '#60a5fa', accentDeep: '#2563eb',
@@ -13,7 +8,6 @@ const C = {
   muted: '#94a3b8', subtle: '#64748b', gold: '#f59e0b',
 };
 
-// ── INLINE SVG ICONS (no external deps) ──────────────────────────────────────
 const Icon = ({ d, size = 20, color = 'currentColor', stroke = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
@@ -34,66 +28,59 @@ const I = {
   phone:   "M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.37 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0122 16.92z",
   mail:    "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6",
   clock:   "M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z M12 6v6l4 2",
-  user:    "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
+  key:     "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
 };
 
-// ── HOTEL ROOMS (placeholder data — easy to update later) ────────────────────
 const ROOMS = [
-  {
-    name: "Atelier Suite",
-    blurb: "Open-plan workspace, king bed, city skyline through floor-to-ceiling windows.",
-    price: 850,
-    img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200",
-  },
-  {
-    name: "Noir Loft",
-    blurb: "Two levels of design-led living. Private terrace, dual rainfall showers, smart everything.",
-    price: 1450,
-    img: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1200",
-  },
-  {
-    name: "The Penthouse",
-    blurb: "Top-floor private residence. Three bedrooms, butler service, panoramic 360° views.",
-    price: 3200,
-    img: "https://images.unsplash.com/photo-1591088398332-8a7791972843?q=80&w=1200",
-  },
+  { name: "Atelier Suite", blurb: "Open plan workspace, king bed, city skyline through floor to ceiling windows.", price: 850, img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200" },
+  { name: "Noir Loft", blurb: "Two levels of considered living. Private terrace, dual rainfall showers, smart everything.", price: 1450, img: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1200" },
+  { name: "The Penthouse", blurb: "Top floor private residence. Three bedrooms, butler service, panoramic 360° views.", price: 3200, img: "https://images.unsplash.com/photo-1591088398332-8a7791972843?q=80&w=1200" },
 ];
 
 const AMENITIES = [
   { icon: I.pool,    name: "Sky Pool",        desc: "Heated infinity edge, Floor 14" },
-  { icon: I.spa,     name: "Zen Spa",         desc: "Full-service wellness retreat" },
-  { icon: I.utensils,name: "24/7 Dining",     desc: "Chef-led room service, any hour" },
-  { icon: I.wifi,    name: "1Gbps Fibre",     desc: "Encrypted, hotel-wide coverage" },
+  { icon: I.spa,     name: "Zen Spa",         desc: "Full service wellness retreat" },
+  { icon: I.utensils,name: "24/7 Dining",     desc: "Chef led room service, any hour" },
+  { icon: I.wifi,    name: "1Gbps Fibre",     desc: "Encrypted, hotel wide coverage" },
   { icon: I.dumbbell,name: "Fitness Center",  desc: "Technogym, personal trainers" },
-  { icon: I.car,     name: "Chauffeur",       desc: "Airport transfer & city rides" },
+  { icon: I.car,     name: "Chauffeur",       desc: "Airport transfer and city rides" },
 ];
 
 const REVIEWS = [
-  { name: "Adwoa M.",     role: "Returning guest",      text: "The AI concierge actually works. I asked for late check-out at 11 PM and someone replied within seconds. This is what hospitality should feel like." },
+  { name: "Adwoa M.",     role: "Returning guest",      text: "The AI concierge actually works. I asked for late checkout at 11 PM and someone replied within seconds. This is what hospitality should feel like." },
   { name: "James R.",     role: "Business traveler",    text: "Stayed at hundreds of hotels. None of them let me settle my folio from the room without speaking to anyone. Tiny detail, massive difference." },
-  { name: "Priya K.",     role: "Anniversary stay",     text: "The Noir Loft was unreal. The digital key, the in-room ordering, the spa booking — every single touchpoint felt thought through." },
+  { name: "Priya K.",     role: "Anniversary stay",     text: "The Noir Loft was unreal. The digital key, the in room ordering, the spa booking, every single touchpoint felt thought through." },
 ];
 
 const GALLERY = [
-  "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=1200",
-  "https://images.unsplash.com/photo-1564501049412-61c2a3083791?q=80&w=1200",
-  "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=1200",
-  "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1200",
-  "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=1200",
-  "https://images.unsplash.com/photo-1455587734955-081b22074882?q=80&w=1200",
+  { src: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=1200", label: "Grand Lobby" },
+  { src: "https://images.unsplash.com/photo-1564501049412-61c2a3083791?q=80&w=1200", label: "Atelier Suite" },
+  { src: "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=1200", label: "Sky Pool" },
+  { src: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1200", label: "Zen Spa" },
+  { src: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=1200", label: "Noir Loft" },
+  { src: "https://images.unsplash.com/photo-1455587734955-081b22074882?q=80&w=1200", label: "Sky Bar" },
 ];
 
-// ── COMPONENT ────────────────────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const heroRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const handleHeroMouseMove = (e) => {
+    if (!heroRef.current || window.innerWidth < 1024) return;
+    const rect = heroRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    setTilt({ x, y });
+  };
 
   const scrollToId = (id) => {
     const el = document.getElementById(id);
@@ -104,25 +91,37 @@ export default function Home() {
   return (
     <div style={{ background: C.dark, color: C.text, fontFamily: "'DM Sans', 'Inter', sans-serif", minHeight: '100vh', overflow: 'hidden' }}>
       <style>{`
-        @keyframes kenBurns { 0%{transform:scale(1.0)} 50%{transform:scale(1.06)} 100%{transform:scale(1.0)} }
-        @keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-        @keyframes fadeUp   { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmer  { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-        @keyframes glow     { 0%,100%{box-shadow:0 10px 40px rgba(59,130,246,0.4)} 50%{box-shadow:0 10px 50px rgba(59,130,246,0.6)} }
+        @keyframes kenBurns   { 0%{transform:scale(1.0)} 50%{transform:scale(1.06)} 100%{transform:scale(1.0)} }
+        @keyframes fadeUp     { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes glow       { 0%,100%{box-shadow:0 10px 40px rgba(59,130,246,0.4)} 50%{box-shadow:0 10px 50px rgba(59,130,246,0.6)} }
+        @keyframes cardFloat  { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-14px) rotate(0.6deg)} }
+        @keyframes holoSweep  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         * { box-sizing: border-box; }
         a { color: inherit; text-decoration: none; }
         .serif { font-family: 'Georgia', 'Times New Roman', serif; font-weight: 300; }
         .reveal { animation: fadeUp 0.8s ease-out both; }
-        .room-card:hover .room-img { transform: scale(1.05); }
-        .gallery-tile:hover { transform: scale(1.03); }
-        .amenity-card:hover { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.05); }
+        .room-card:hover .room-img { transform: scale(1.06); }
+        .room-card:hover .room-overlay { opacity: 1; }
+        .room-card:hover { transform: translateY(-8px); border-color: rgba(59,130,246,0.4) !important; }
+        .gallery-tile:hover .gallery-img { transform: scale(1.08); }
+        .gallery-tile:hover .gallery-info { opacity: 1; transform: translateY(0); }
+        .amenity-card:hover { border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.07); transform: translateY(-4px); }
+        .amenity-card:hover .amenity-icon-wrap { box-shadow: 0 0 24px rgba(59,130,246,0.4); }
         .nav-link:hover { color: ${C.accent}; }
-
-        /* Tablet */
+        .review-card:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-4px); }
+        .glass-btn:hover { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.4) !important; }
+        .glass-panel {
+          background: linear-gradient(135deg, rgba(15,23,42,0.6), rgba(15,23,42,0.35));
+          backdrop-filter: blur(28px);
+          -webkit-backdrop-filter: blur(28px);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 60px -10px rgba(0,0,0,0.5);
+        }
         @media (max-width: 1024px) {
           .nav-links-desktop { display: none !important; }
           .nav-mobile-toggle { display: flex !important; }
           .hero-title { font-size: 56px !important; }
+          .hero-keycard { display: none !important; }
           .rooms-grid { grid-template-columns: 1fr !important; }
           .amenities-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -130,7 +129,6 @@ export default function Home() {
           .footer-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
           .section-padding { padding: 80px 24px !important; }
         }
-        /* Mobile */
         @media (max-width: 640px) {
           .hero-title { font-size: 38px !important; line-height: 1.05 !important; }
           .hero-sub { font-size: 14px !important; }
@@ -141,16 +139,18 @@ export default function Home() {
           .section-title { font-size: 28px !important; }
           .top-nav { padding: 14px 20px !important; }
           .footer-grid { padding: 50px 20px !important; }
+          .trust-row { gap: 16px !important; }
         }
       `}</style>
 
-      {/* ─── TOP NAV ─── */}
       <nav className="top-nav" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
         padding: scrolled ? '14px 60px' : '22px 60px',
-        background: scrolled ? 'rgba(2,6,23,0.85)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+        background: scrolled ? 'rgba(2,6,23,0.7)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(24px)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(24px)' : 'none',
         borderBottom: scrolled ? `1px solid ${C.border}` : '1px solid transparent',
+        boxShadow: scrolled ? 'inset 0 -1px 0 rgba(255,255,255,0.04)' : 'none',
         transition: 'all 0.3s ease',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
@@ -164,7 +164,6 @@ export default function Home() {
           <div className="serif" style={{ fontSize: 22, letterSpacing: 2, color: '#fff' }}>The Afia</div>
         </div>
 
-        {/* Desktop nav links */}
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
           {['Suites', 'Amenities', 'Gallery', 'Reviews', 'Contact'].map(label => (
             <div key={label} className="nav-link" onClick={() => scrollToId(label.toLowerCase())}
@@ -173,11 +172,11 @@ export default function Home() {
             </div>
           ))}
           <div style={{ height: 20, width: 1, background: C.border }} />
-          <button onClick={() => navigate('/login')}
+          <button className="glass-btn" onClick={() => navigate('/login')}
             style={{
-              background: 'transparent', border: `1px solid ${C.border}`, color: C.text,
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, color: C.text,
               padding: '9px 18px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', letterSpacing: 0.5, fontFamily: 'inherit',
+              cursor: 'pointer', letterSpacing: 0.5, fontFamily: 'inherit', transition: 'all 0.2s',
             }}>
             Sign In
           </button>
@@ -202,10 +201,9 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Mobile hamburger */}
         <button className="nav-mobile-toggle" onClick={() => setMobileMenuOpen(o => !o)}
           style={{
-            display: 'none', background: 'transparent', border: `1px solid ${C.border}`,
+            display: 'none', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
             color: C.text, padding: 10, borderRadius: 10, cursor: 'pointer',
             flexDirection: 'column', gap: 4,
           }}>
@@ -215,12 +213,10 @@ export default function Home() {
         </button>
       </nav>
 
-      {/* Mobile menu drawer */}
       {mobileMenuOpen && (
-        <div style={{
-          position: 'fixed', top: 64, left: 0, right: 0, zIndex: 99,
-          background: 'rgba(2,6,23,0.98)', backdropFilter: 'blur(20px)',
-          borderBottom: `1px solid ${C.border}`, padding: 24,
+        <div className="glass-panel" style={{
+          position: 'fixed', top: 64, left: 12, right: 12, zIndex: 99,
+          borderRadius: 20, padding: 24,
           display: 'flex', flexDirection: 'column', gap: 16,
         }}>
           {['Suites', 'Amenities', 'Gallery', 'Reviews', 'Contact'].map(label => (
@@ -231,7 +227,7 @@ export default function Home() {
           ))}
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
-              style={{ flex: 1, padding: 12, background: 'transparent', border: `1px solid ${C.border}`,
+              style={{ flex: 1, padding: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
                 color: C.text, borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Sign In
             </button>
@@ -251,8 +247,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── HERO ─── */}
-      <section style={{
+      <section ref={heroRef} onMouseMove={handleHeroMouseMove} style={{
         height: '100vh', minHeight: 600, position: 'relative',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -272,12 +267,59 @@ export default function Home() {
           filter: 'blur(80px)', zIndex: 2, pointerEvents: 'none',
         }} />
 
+        <div className="hero-keycard" style={{
+          position: 'absolute', right: '7%', top: '50%', zIndex: 4,
+          transform: `translateY(-50%) rotateY(${tilt.x * 8}deg) rotateX(${-tilt.y * 6}deg)`,
+          transition: 'transform 0.3s ease-out',
+          perspective: 1000,
+        }}>
+          <div style={{
+            width: 280, padding: '28px 26px', borderRadius: 22,
+            background: 'linear-gradient(150deg, rgba(59,130,246,0.18), rgba(15,23,42,0.55))',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            boxShadow: '0 30px 70px -10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)',
+            animation: 'cardFloat 7s ease-in-out infinite',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.12) 48%, rgba(96,165,250,0.18) 52%, transparent 70%)',
+              backgroundSize: '250% 100%',
+              animation: 'holoSweep 5s ease-in-out infinite',
+              pointerEvents: 'none',
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, position: 'relative' }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 10,
+                background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon d={I.key} size={17} color={C.accent2} />
+              </div>
+              <div style={{ fontSize: 9, letterSpacing: 2, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', textAlign: 'right' }}>
+                Encrypted<br/>Access
+              </div>
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: 2, color: C.accent2, textTransform: 'uppercase', fontWeight: 700, marginBottom: 6, position: 'relative' }}>
+              Digital Key · Suite 04
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: 26, letterSpacing: 6, color: '#fff', fontWeight: 700, marginBottom: 18, position: 'relative' }}>
+              7 2 9 1
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>Active session, no keys, no queues</span>
+            </div>
+          </div>
+        </div>
+
         <div className="reveal" style={{ position: 'relative', zIndex: 3, textAlign: 'center', maxWidth: 900, padding: '0 24px' }}>
           <div style={{
-            display: 'inline-block', padding: '6px 18px', marginBottom: 30,
+            display: 'inline-block', padding: '7px 20px', marginBottom: 30,
             border: `1px solid ${C.border}`, borderRadius: 30,
             fontSize: 10, letterSpacing: 4, color: C.accent, fontWeight: 700, textTransform: 'uppercase',
-            background: 'rgba(59,130,246,0.08)',
+            background: 'rgba(59,130,246,0.08)', backdropFilter: 'blur(10px)',
           }}>
             ✦ Boutique Luxury · In the heart of the city
           </div>
@@ -289,7 +331,7 @@ export default function Home() {
             Designed for<br/>those who notice.
           </h1>
           <p className="hero-sub" style={{ fontSize: 17, color: C.muted, lineHeight: 1.7, maxWidth: 580, margin: '0 auto 40px' }}>
-            A modern boutique hotel where every detail is intentional —
+            A modern boutique hotel where every detail is intentional,
             from your encrypted digital key to your 24/7 AI concierge.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -303,19 +345,18 @@ export default function Home() {
               }}>
               Reserve Your Stay <Icon d={I.arrow} size={14} color="#fff" />
             </button>
-            <button onClick={() => scrollToId('suites')}
+            <button className="glass-btn" onClick={() => scrollToId('suites')}
               style={{
                 padding: '15px 32px', borderRadius: 12,
                 background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
                 color: C.text, fontSize: 13, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase',
-                cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(10px)',
+                cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(10px)', transition: 'all 0.2s',
               }}>
               Explore Suites
             </button>
           </div>
 
-          {/* Small trust row */}
-          <div style={{ display: 'flex', gap: 32, justifyContent: 'center', marginTop: 50, flexWrap: 'wrap' }}>
+          <div className="trust-row" style={{ display: 'flex', gap: 32, justifyContent: 'center', marginTop: 50, flexWrap: 'wrap' }}>
             {[
               { icon: I.star,   label: '4.9 · 800+ stays' },
               { icon: I.shield, label: 'Encrypted access' },
@@ -330,14 +371,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── QUICK BOOK BAR ─── */}
       <section style={{ padding: '0 24px', marginTop: -40, position: 'relative', zIndex: 10 }}>
-        <div className="quick-book-bar" style={{
+        <div className="quick-book-bar glass-panel" style={{
           maxWidth: 1100, margin: '0 auto', padding: 28,
-          background: 'linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.85))',
-          backdropFilter: 'blur(24px)', border: `1px solid ${C.border}`,
           borderRadius: 24, display: 'flex', gap: 20, alignItems: 'flex-end',
-          boxShadow: '0 30px 70px -15px rgba(0,0,0,0.6)',
         }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10, letterSpacing: 2, color: C.accent, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Check In</div>
@@ -377,13 +414,13 @@ export default function Home() {
               background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})`,
               color: '#fff', fontSize: 12, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              boxShadow: '0 8px 24px rgba(59,130,246,0.3)',
             }}>
             Check Availability
           </button>
         </div>
       </section>
 
-      {/* ─── SUITES ─── */}
       <section id="suites" className="section-padding" style={{ padding: '120px 60px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
@@ -394,28 +431,32 @@ export default function Home() {
               Three ways to stay
             </h2>
             <p style={{ color: C.muted, fontSize: 15, maxWidth: 540, margin: '0 auto', lineHeight: 1.7 }}>
-              Every suite is curated, not decorated. Bespoke linens, smart climate, sound-isolated walls.
+              Every suite is curated, not decorated. Bespoke linens, smart climate, sound isolated walls.
             </p>
           </div>
 
           <div className="rooms-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
             {ROOMS.map(r => (
               <div key={r.name} className="room-card" style={{
-                background: C.card, borderRadius: 20, overflow: 'hidden',
+                background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(16px)',
+                borderRadius: 20, overflow: 'hidden',
                 border: `1px solid ${C.border}`, transition: 'all 0.4s',
                 cursor: 'pointer',
               }}
-              onClick={() => navigate('/book')}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-8px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+              onClick={() => navigate('/book')}>
                 <div style={{ height: 240, overflow: 'hidden', position: 'relative' }}>
                   <img src={r.img} alt={r.name} className="room-img"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s' }} />
+                  <div className="room-overlay" style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(180deg, transparent 40%, rgba(2,6,23,0.7))',
+                    opacity: 0.7, transition: 'opacity 0.3s',
+                  }} />
                   <div style={{
                     position: 'absolute', top: 14, right: 14,
-                    background: 'rgba(2,6,23,0.85)', backdropFilter: 'blur(10px)',
-                    border: `1px solid ${C.border}`, borderRadius: 30,
-                    padding: '6px 14px', fontSize: 11, fontWeight: 700, color: C.accent, letterSpacing: 1,
+                    background: 'rgba(2,6,23,0.6)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 30,
+                    padding: '6px 14px', fontSize: 11, fontWeight: 700, color: C.accent2, letterSpacing: 1,
                   }}>FROM ₵{r.price.toLocaleString()}/NIGHT</div>
                 </div>
                 <div style={{ padding: 24 }}>
@@ -434,7 +475,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── AMENITIES ─── */}
       <section id="amenities" className="section-padding" style={{ padding: '120px 60px', background: 'linear-gradient(180deg, transparent, rgba(59,130,246,0.03), transparent)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
@@ -451,15 +491,15 @@ export default function Home() {
 
           <div className="amenities-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
             {AMENITIES.map(a => (
-              <div key={a.name} className="amenity-card" style={{
+              <div key={a.name} className="amenity-card glass-panel" style={{
                 padding: 28, borderRadius: 18,
-                background: C.card, border: `1px solid ${C.border}`,
                 transition: 'all 0.3s', cursor: 'default',
               }}>
-                <div style={{
+                <div className="amenity-icon-wrap" style={{
                   width: 48, height: 48, borderRadius: 12,
                   background: 'rgba(59,130,246,0.1)', border: `1px solid ${C.border}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+                  transition: 'box-shadow 0.3s',
                 }}>
                   <Icon d={a.icon} size={22} color={C.accent} />
                 </div>
@@ -471,7 +511,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── GALLERY ─── */}
       <section id="gallery" className="section-padding" style={{ padding: '120px 60px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
@@ -484,26 +523,36 @@ export default function Home() {
           </div>
 
           <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-            {GALLERY.map((src, i) => (
+            {GALLERY.map((g, i) => (
               <div key={i} className="gallery-tile" style={{
                 position: 'relative', overflow: 'hidden', borderRadius: 18,
                 aspectRatio: i % 5 === 0 ? '4/5' : '1/1',
                 gridRow: i % 5 === 0 ? 'span 2' : 'auto',
-                transition: 'transform 0.4s', cursor: 'pointer',
+                cursor: 'pointer', border: `1px solid ${C.border}`,
               }}>
-                <img src={src} alt={`Gallery ${i+1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={g.src} alt={g.label} className="gallery-img"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} />
                 <div style={{
                   position: 'absolute', inset: 0,
-                  background: 'linear-gradient(180deg, transparent 60%, rgba(2,6,23,0.6))',
+                  background: 'linear-gradient(180deg, transparent 55%, rgba(2,6,23,0.75))',
                 }} />
+                <div className="gallery-info" style={{
+                  position: 'absolute', left: 16, bottom: 16, right: 16,
+                  opacity: 0, transform: 'translateY(8px)', transition: 'all 0.3s',
+                }}>
+                  <div style={{
+                    display: 'inline-block', padding: '5px 14px', borderRadius: 20,
+                    background: 'rgba(2,6,23,0.5)', backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: 0.5,
+                  }}>{g.label}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── REVIEWS ─── */}
       <section id="reviews" className="section-padding" style={{ padding: '120px 60px', background: 'linear-gradient(180deg, transparent, rgba(59,130,246,0.04), transparent)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
@@ -517,19 +566,23 @@ export default function Home() {
 
           <div className="reviews-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}>
             {REVIEWS.map((r, i) => (
-              <div key={i} style={{
-                padding: 30, borderRadius: 20,
-                background: C.card, border: `1px solid ${C.border}`,
+              <div key={i} className="review-card glass-panel" style={{
+                padding: 30, borderRadius: 20, position: 'relative', overflow: 'hidden',
+                transition: 'all 0.3s',
               }}>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 18 }}>
+                <div className="serif" style={{
+                  position: 'absolute', top: -10, right: 14, fontSize: 90,
+                  color: 'rgba(59,130,246,0.08)', lineHeight: 1, userSelect: 'none',
+                }}>"</div>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 18, position: 'relative' }}>
                   {Array(5).fill(0).map((_, idx) => (
                     <Icon key={idx} d={I.star} size={14} color={C.gold} stroke={1.2} />
                   ))}
                 </div>
-                <p className="serif" style={{ fontSize: 17, color: '#fff', fontStyle: 'italic', lineHeight: 1.6, margin: '0 0 24px' }}>
-                  "{r.text}"
+                <p className="serif" style={{ fontSize: 17, color: '#fff', fontStyle: 'italic', lineHeight: 1.6, margin: '0 0 24px', position: 'relative' }}>
+                  {r.text}
                 </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
                   <div style={{
                     width: 38, height: 38, borderRadius: '50%',
                     background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})`,
@@ -547,17 +600,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── CONTACT / CTA ─── */}
       <section id="contact" className="section-padding" style={{ padding: '120px 60px' }}>
-        <div style={{
+        <div className="glass-panel" style={{
           maxWidth: 1100, margin: '0 auto', padding: '80px 60px', borderRadius: 28, position: 'relative', overflow: 'hidden',
-          background: 'linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))',
-          backdropFilter: 'blur(24px)', border: `1px solid ${C.border}`,
         }}>
           <div style={{
             position: 'absolute', top: '-20%', right: '-10%',
             width: 400, height: 400, borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(59,130,246,0.18), transparent 70%)',
+            filter: 'blur(60px)', pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: '-30%', left: '-10%',
+            width: 300, height: 300, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(96,165,250,0.1), transparent 70%)',
             filter: 'blur(60px)', pointerEvents: 'none',
           }} />
           <div style={{ position: 'relative', textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
@@ -568,7 +624,7 @@ export default function Home() {
               Your suite is waiting.
             </h2>
             <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.7, margin: '0 0 32px' }}>
-              Book direct for the best rate and the full Afia experience —
+              Book direct for the best rate and the full Afia experience,
               your AI concierge, digital key, and 24/7 dining included.
             </p>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -596,10 +652,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
       <footer style={{
         padding: '60px 60px 30px', borderTop: `1px solid ${C.border}`,
-        background: 'rgba(2,6,23,0.95)',
+        background: 'rgba(2,6,23,0.8)', backdropFilter: 'blur(20px)',
       }}>
         <div className="footer-grid" style={{
           maxWidth: 1200, margin: '0 auto',
@@ -647,7 +702,7 @@ export default function Home() {
                 <Icon d={I.phone} size={13} color={C.muted} /> +233 54 366 2896
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: C.muted }}>
-                <Icon d={I.mail} size={13} color={C.muted} /> [email protected]
+                <Icon d={I.mail} size={13} color={C.muted} /> stay@theafia.com
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: C.muted }}>
                 <Icon d={I.pin} size={13} color={C.muted} />
@@ -666,7 +721,7 @@ export default function Home() {
             © {new Date().getFullYear()} The Afia. All rights reserved.
           </div>
           <div style={{ fontSize: 9, color: C.subtle, letterSpacing: 3, textTransform: 'uppercase' }}>
-            Powered by StayPilot · Encrypted End-to-End
+            Powered by StayPilot · Encrypted End to End
           </div>
         </div>
       </footer>

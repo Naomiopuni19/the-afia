@@ -98,11 +98,13 @@ const Login = () => {
     setLoading(false);
 
     if (error) {
-      setServerError(
-        error.message === "Invalid login credentials"
-          ? "Incorrect email or password. Please try again."
-          : error.message
-      );
+  setServerError(
+    error.message === "Invalid login credentials"
+      ? "Incorrect email or password. Please try again."
+      : error.message?.includes("fetch") || error.message?.includes("network") || error.message?.includes("Failed")
+      ? "Connection failed. Please check your internet and try again."
+      : error.message
+  );
       return;
     }
 
