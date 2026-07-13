@@ -165,7 +165,7 @@ export default function Welcome() {
 
   function showToast(msg, type='accent') {
     setToast({ msg, type, visible:true });
-    setTimeout(() => setToast(t => ({ ...t, visible:false })), 3200);
+    
   }
 
   useEffect(() => {
