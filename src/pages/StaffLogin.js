@@ -277,6 +277,14 @@ const StaffLogin = () => {
 
       <form onSubmit={handleLogin} style={styles.card}>
         <div style={styles.shimmerStrip} />
+        <div onClick={() => navigate('/')} style={{ cursor:'pointer', marginBottom:16 }}>
+  <div style={{
+    width:40, height:40, borderRadius:12, margin:'0 auto',
+    background:'linear-gradient(135deg,#3b82f6,#60a5fa)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    fontSize:20, boxShadow:'0 4px 20px rgba(59,130,246,0.35)',
+  }}>✦</div>
+</div>
 
         <div style={styles.badge}>
           <ShieldCheck size={11} /> RESTRICTED ACCESS

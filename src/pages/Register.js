@@ -138,10 +138,16 @@ const Register = () => {
     });
     setLoading(false);
 
-    if (error) {
-      setServerError(error.message);
-      return;
-    }
+   if (error) {
+  if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists")) {
+    setServerError("An account with this email already exists. Please sign in instead.");
+  } else if (error.message.toLowerCase().includes("fetch") || error.message.toLowerCase().includes("network")) {
+    setServerError("Connection failed. Please check your internet and try again.");
+  } else {
+    setServerError(error.message);
+  }
+  return;
+}
     navigate("/book");
   };
 
@@ -353,6 +359,14 @@ const Register = () => {
 
       <form onSubmit={handleRegister} style={styles.card}>
         <div style={styles.shimmerStrip} />
+        <div onClick={() => navigate('/')} style={{ cursor:'pointer', marginBottom:16 }}>
+  <div style={{
+    width:40, height:40, borderRadius:12, margin:'0 auto',
+    background:'linear-gradient(135deg,#3b82f6,#60a5fa)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    fontSize:20, boxShadow:'0 4px 20px rgba(59,130,246,0.35)',
+  }}>✦</div>
+</div>
 
         <h2 style={styles.title}>Join StayPilot</h2>
         <span style={styles.subtitle}>Premium Reservation Access</span>

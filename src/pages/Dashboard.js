@@ -91,7 +91,7 @@ const HkModal = ({ hkModal, setHkModal, hkTasks, HK_ITEMS, toggleTask, markRoomV
 
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
           {(tasks.length > 0 ? tasks : HK_ITEMS.map((name,i) => ({ id:i, task_name:name, completed:false }))).map(task => (
-            <div key={task.id} onClick={() => typeof task.id === "string" ? toggleTask(task) : null}
+            <div key={task.id} onClick={() => toggleTask(task)}
               style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 14px", borderRadius:12, background:task.completed?"rgba(16,185,129,0.06)":"rgba(255,255,255,0.02)", border:`1px solid ${task.completed?"rgba(16,185,129,0.2)":"rgba(51,65,85,0.2)"}`, cursor:"pointer", transition:"all 0.15s" }}>
               <div style={{ width:22, height:22, borderRadius:6, background:task.completed?"#10b981":"transparent", border:`2px solid ${task.completed?"#10b981":"#334155"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                 {task.completed && <span style={{ color:"#fff", fontSize:12, fontWeight:900 }}>✓</span>}
