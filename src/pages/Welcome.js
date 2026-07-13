@@ -190,22 +190,11 @@ export default function Welcome() {
   }, []);
 
   // Auto-logout when stay ends (time-based)
-  useEffect(() => {
-    if (!booking?.check_out_date) return;
-    if (booking.status === 'ACTIVE') { setStayEnded(false); return; }
-    const checkStayEnded = () => {
-      const now = new Date();
-      const checkoutDate = new Date(booking.check_out_date);
-      checkoutDate.setUTCHours(12, 0, 0, 0);
-      if (now >= checkoutDate && booking.status === 'COMPLETED') {
-        setStayEnded(true);
-        setTimeout(async () => { await supabase.auth.signOut(); navigate('/login'); }, 10000);
-      }
-    };
-    checkStayEnded();
-    const interval = setInterval(checkStayEnded, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [booking, navigate]);
+ useEffect(() => {
+  if (!booking) return;
+  if (booking.status === 'COMPLETED') setStayEnded(true);
+  if (booking.status === 'ACTIVE') setStayEnded(false);
+}, [booking]);
 
   useEffect(() => {
     if (guestName && guestName !== "Guest" && chatMessages.length === 0) {
@@ -250,7 +239,7 @@ export default function Welcome() {
       .on('postgres_changes', { event:'*', schema:'public', table:'bookings', filter:`room_number=eq.${roomNumber}` }, async (payload) => {
         if (payload.new?.status === 'COMPLETED') {
           setStayEnded(true);
-          setTimeout(async () => { await supabase.auth.signOut(); navigate('/login'); }, 10000);
+          
         }
       })
       .on('postgres_changes', { event:'*', schema:'public', table:'orders', filter:`room_number=eq.${roomNumber}` }, () => fetchMyOrders(roomNumber))
