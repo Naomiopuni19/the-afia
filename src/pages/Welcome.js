@@ -175,15 +175,14 @@ export default function Welcome() {
       setUser(session.user);
       setAuthChecked(true);
       const { data: bookings } = await supabase
-        .from('bookings').select('*')
-        .eq('user_id', session.user.id)
-        .in('status', ['ACTIVE', 'COMPLETED'])
-        .order('created_at', { ascending:false }).limit(1);
-      if (bookings && bookings.length > 0) {
-        setBooking(bookings[0]);
-        setKeyCode(bookings[0].access_token || '----');
-        if (bookings[0].status === 'COMPLETED') setStayEnded(true);
-      }
+  .from('bookings').select('*')
+  .eq('user_id', session.user.id)
+  .eq('status', 'ACTIVE')
+  .order('created_at', { ascending:false }).limit(1);
+if (bookings && bookings.length > 0) {
+  setBooking(bookings[0]);
+  setKeyCode(bookings[0].access_token || '----');
+}
       setLoadingData(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
