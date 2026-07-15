@@ -1,3 +1,4 @@
+import PromotionsTab from "../components/dashboard/PromotionsTab";
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -541,6 +542,7 @@ export default function Dashboard() {
     { key:"calls", label:"Call Requests", blink:callsBlink, count:callRequests.length },
     { key:"reservations", label:"Reservations", count:allBookings.filter(b=>b.status==="ACTIVE").length },
     { key:"housekeeping", label:"Housekeeping", count:rooms.filter(r=>r.status==="CLEANING").length },
+    { key:"promotions", label:"Promotions", adminOnly:true },
   ].filter(n=>!ADMIN_ONLY.includes(n.key)||isAdmin);
 
   // ── Loading ───────────────────────────────────────────────
@@ -612,6 +614,7 @@ export default function Dashboard() {
         {activeTab==="reports"&&isAdmin&&<ReportsTab isMobile={isMobile} reportDate={reportDate} setReportDate={setReportDate} reportData={reportData} reportLoading={reportLoading} generateReport={generateReport} copyReport={copyReport} />}
         {activeTab==="billing"&&isAdmin&&<BillingTab isMobile={isMobile} orders={orders} totalRevenue={totalRevenue} statusCounts={statusCounts} bookings={bookings} ledgerRoom={ledgerRoom} setLedgerRoom={setLedgerRoom} ledgerData={ledgerData} ledgerLoading={ledgerLoading} fetchLedger={fetchLedger} handleSettleLedger={handleSettleLedger} setConfirmDialog={setConfirmDialog} />}
         {activeTab==="catalog"&&isAdmin&&<CatalogTab isMobile={isMobile} menuItems={menuItems} menuForm={menuForm} setMenuForm={setMenuForm} editingMenu={editingMenu} setEditingMenu={setEditingMenu} menuUploading={menuUploading} menuImageFile={menuImageFile} setMenuImageFile={setMenuImageFile} handleMenuSave={handleMenuSave} handleMenuEdit={handleMenuEdit} handleMenuToggle={handleMenuToggle} />}
+        {activeTab==="promotions"&&isAdmin&&<PromotionsTab isMobile={isMobile} bookings={bookings} supabase={supabase} />}
       </main>
     </div>
   );
