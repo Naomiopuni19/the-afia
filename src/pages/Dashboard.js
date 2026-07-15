@@ -533,8 +533,7 @@ export default function Dashboard() {
     const inMonth=allBookings.filter(b=>b.status!=="CANCELLED"&&b.check_in_date<=end&&b.check_out_date>=start);
     return { count:inMonth.length, revenue:inMonth.reduce((s,b)=>s+Number(b.total_amount||0),0) };
   })();
-
-  const ADMIN_ONLY = ["analytics","billing","catalog","settings","reports"];
+const ADMIN_ONLY = ["analytics","billing","catalog","settings","reports","promotions"];
   const navItems = [
     { key:"rooms", label:"Suite Status" },
     { key:"kitchen", label:"Kitchen Orders", blink:ordersBlink, count:activeOrders.length },
